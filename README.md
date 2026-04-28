@@ -10,13 +10,13 @@ TondID is a local Remote ID QA and mock-broadcast toolkit for ESP32-class boards
 
 ## Structure
 
-- `configurator/` — React-based local control surface served at `http://localhost:3000`
-- `firmware/RemoteIDModule/` — ESP32 firmware source
-- `firmware/libraries/` — bundled dependencies for firmware builds
-- `docs/` — screenshots and supporting notes
-- `scripts/qa-flash.ps1` — Windows helper for repeatable compile/upload
-- `assets/tondid-mark.svg` — main brand mark
-- `assets/tid-monogram.svg` — compact TID monogram for constrained placements
+- `configurator/` - React-based local control surface served at `http://localhost:3000`
+- `firmware/RemoteIDModule/` - ESP32 firmware source
+- `firmware/libraries/` - bundled dependencies for firmware builds
+- `docs/` - screenshots and supporting notes
+- `scripts/qa-flash.ps1` - Windows helper for repeatable compile/upload
+- `assets/tondid-mark.svg` - main brand mark
+- `assets/tid-monogram.svg` - compact TID monogram for constrained placements
 
 ## Brand
 
