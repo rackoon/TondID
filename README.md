@@ -1,36 +1,70 @@
 # TondID
 
-![TondID mark](./assets/tondid-mark.svg)
+![TondID wordmark](./assets/tondid-wordmark.svg)
 
-TondID is a local Remote ID QA and mock-broadcast toolkit for ESP32-class boards. It combines:
+TondID is a private tooling stack for identity, presence, and protection testing on ESP32-class hardware. It packages a modern local configurator, persistent firmware profiles, mock swarm behavior, and the supporting material needed to run repeatable QA sessions without depending on cloud services.
 
-- a Chrome/WebSerial configurator
-- an ESP32 firmware build with mock swarm behavior
-- helper scripts and documentation for repeatable local testing
+## What TondID is for
 
-## Structure
+TondID is meant to sit behind systems that need to observe, verify, or harden against moving assets with a transmitted identity layer. The protected object does not have to be a single vehicle type. The stack is intentionally broad enough to support testing around drones, rail, aviation, heavy equipment, and other protected platforms where presence and identity matter.
 
-- `configurator/` - React-based local control surface served at `http://localhost:3000`
-- `firmware/RemoteIDModule/` - ESP32 firmware source
-- `firmware/libraries/` - bundled dependencies for firmware builds
-- `docs/` - screenshots and supporting notes
-- `scripts/qa-flash.ps1` - Windows helper for repeatable compile/upload
-- `assets/tondid-mark.svg` - main brand mark
-- `assets/tid-monogram.svg` - compact TID monogram for constrained placements
+## Current repository contents
 
-## Brand
+- `configurator/` - Chrome/WebSerial control surface for local configuration over USB Type-C
+- `firmware/RemoteIDModule/` - ESP32-C3 oriented firmware with persistent profile and runtime state
+- `firmware/libraries/` - bundled firmware dependencies
+- `docs/` - screenshots, notes, and operating references
+- `scripts/qa-flash.ps1` - Windows helper for repeatable flashing
+- `assets/` - brand marks, monograms, and presentation assets
 
-- `TondID` is the primary product name
-- `TID` is the compact display form for logos, printouts, badges, and other space-limited surfaces
+## Product principles
 
-## Local Configurator
+- local-first operation
+- persistent on-device configuration
+- hardware-friendly setup over existing USB Type-C
+- configurable mock identity, movement, and swarm behavior
+- clean operator workflow through a single browser-based control surface
 
-Run the configurator from `configurator/` and connect to the board over WebSerial in Chrome.
+## Quick start
 
-## Firmware
+1. Open the configurator from `configurator/`.
+2. Connect to the board in Chrome over WebSerial.
+3. Adjust profile, identity, ghost count, movement mode, and altitude mode.
+4. Apply settings so they persist to on-device storage.
+5. Run and validate behavior against the target detector.
 
-The current firmware targets ESP32-C3 class boards and persists profile/runtime configuration to device storage.
+## Branding
+
+Primary name:
+- `TondID`
+
+Compact form:
+- `TID`
+
+Brand usage rule:
+- use `TondID` wherever there is enough room to show the full product name
+- use `TID` in constrained placements such as badges, app icons, print labels, and tight UI surfaces
+
+Primary brand assets:
+- `assets/tondid-wordmark.svg`
+- `assets/tondid-mark.svg`
+- `assets/tid-monogram.svg`
+
+## Domains
+
+Reserved domains:
+- `tondid.com`
+- `tondid.eu`
+
+Recommended production mapping:
+- `tondid.com` - primary public product site
+- `www.tondid.com` - redirect to `tondid.com`
+- `tondid.eu` - EU-facing redirect to `tondid.com` until separate regional content exists
+- `app.tondid.com` - future public-facing app or customer portal if needed
+- `docs.tondid.com` - future documentation surface if the docs split from the marketing site
+
+See [docs/DOMAINS.md](./docs/DOMAINS.md) for the domain binding plan.
 
 ## Notes
 
-This repository is assembled from the active local TondID worktree and includes both the configurator and firmware material needed for ongoing QA development.
+This repository is the assembled private TondID worktree and contains the configurator, firmware, supporting scripts, screenshots, and brand material needed for ongoing product development and QA.
