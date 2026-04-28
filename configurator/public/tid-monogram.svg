@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tid-bg" x1="88" y1="72" x2="428" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ADC6FF"/>
+      <stop offset="1" stop-color="#86D7C4"/>
+    </linearGradient>
+    <linearGradient id="tid-glow" x1="120" y1="96" x2="392" y2="408" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3F7FF" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#D7E4FF" stop-opacity="0.76"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="128" fill="#10131B"/>
+  <rect x="40" y="40" width="432" height="432" rx="120" stroke="url(#tid-bg)" stroke-opacity="0.22" stroke-width="2"/>
+  <circle cx="256" cy="256" r="150" fill="url(#tid-glow)" fill-opacity="0.08"/>
+  <path d="M138 166H374" stroke="url(#tid-bg)" stroke-width="24" stroke-linecap="round"/>
+  <path d="M202 166V346" stroke="url(#tid-glow)" stroke-width="28" stroke-linecap="round"/>
+  <path d="M256 158V354" stroke="url(#tid-glow)" stroke-width="28" stroke-linecap="round"/>
+  <path d="M310 162C357.496 162 396 200.504 396 248V264C396 311.496 357.496 350 310 350H284V162H310Z" stroke="url(#tid-bg)" stroke-width="24" stroke-linejoin="round"/>
+  <circle cx="138" cy="166" r="16" fill="#ADC6FF"/>
+  <circle cx="374" cy="166" r="16" fill="#86D7C4"/>
+  <circle cx="310" cy="350" r="16" fill="#ADC6FF"/>
+  <path d="M188 414H324" stroke="url(#tid-bg)" stroke-opacity="0.48" stroke-width="16" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,21 @@
+{
+  "short_name": "TID",
+  "name": "TondID Configurator",
+  "icons": [
+    {
+      "src": "tondid-mark.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "tid-monogram.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#10131b",
+  "background_color": "#0b0e14"
+}

@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shield-accent" x1="120" y1="88" x2="394" y2="418" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ADC6FF"/>
+      <stop offset="1" stop-color="#86D7C4"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#0E1118"/>
+  <rect x="22" y="22" width="468" height="468" rx="94" stroke="white" stroke-opacity="0.08" stroke-width="2"/>
+  <path d="M256 94L368 138V248C368 319.902 323.932 382.081 256 406C188.068 382.081 144 319.902 144 248V138L256 94Z" fill="url(#shield-accent)" fill-opacity="0.10" stroke="url(#shield-accent)" stroke-width="18" stroke-linejoin="round"/>
+  <circle cx="256" cy="236" r="24" fill="#F5F7FF"/>
+  <path d="M256 178V306" stroke="#F5F7FF" stroke-width="20" stroke-linecap="round"/>
+  <path d="M318 198C339.539 215.721 352 240.883 352 268" stroke="url(#shield-accent)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M352 168C382.821 193.366 400 230.848 400 270" stroke="url(#shield-accent)" stroke-opacity="0.64" stroke-width="10" stroke-linecap="round"/>
+  <path d="M194 198C172.461 215.721 160 240.883 160 268" stroke="url(#shield-accent)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M160 168C129.179 193.366 112 230.848 112 270" stroke="url(#shield-accent)" stroke-opacity="0.64" stroke-width="10" stroke-linecap="round"/>
+</svg>

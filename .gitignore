@@ -1,0 +1,10 @@
+configurator/node_modules/
+configurator/build/
+configurator/dev-server.err.log
+configurator/dev-server.out.log
+firmware/RemoteIDModule/build/
+firmware/build-c3/
+*.elf
+*.bin
+*.map
+*.log
