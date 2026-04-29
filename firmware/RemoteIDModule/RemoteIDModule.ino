@@ -705,6 +705,9 @@ static void serial_send_current(void)
             fill_mock_uas_data(slot, slots);
             char mac[18] {};
             serial_make_mac(slot, mac);
+            const char *op = slot_or_default(g.mock_slot_operator_id[slot], g.mock_operator_id);
+            const char *mfr = slot_or_default(g.mock_slot_manufacturer[slot], g.mock_manufacturer);
+            const char *model = slot_or_default(g.mock_slot_model[slot], g.mock_model);
             serial_printf("$T|%f|%f|%f|%d|%d|%s|%s|%s|%s|%d|%d|%d|%s|%s\r\n",
                           UAS_data.Location.Latitude,
                           UAS_data.Location.Longitude,
@@ -713,13 +716,13 @@ static void serial_send_current(void)
                           int(UAS_data.Location.Direction),
                           mac,
                           UAS_data.BasicID[0].UASID,
-                          g.mock_operator_id,
+                          op,
                           UAS_data.SelfID.Desc,
                           int(UAS_data.BasicID[0].UAType),
                           int(UAS_data.BasicID[0].IDType),
                           serial_fly_mode,
-                          g.mock_manufacturer,
-                          g.mock_model);
+                          mfr,
+                          model);
         }
         return;
     }

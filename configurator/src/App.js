@@ -1077,16 +1077,28 @@ function App() {
                 </div>
                 <Dropdown items={idtype_t} selected={data.idtype} label="ID Type" onChange={handleData("idtype")} />
                 <div className="form">
-                  <label className="w">Remote ID</label>
+                  <label className="w">UAS ID</label>
                   <input type="input" value={data.rid} onChange={handleData("rid")} size="24" maxLength="24" />
                 </div>
+                <div className="field-note">Detector-visible identity comes from UAS ID, ID Type, UA Type, Operator ID, and Self ID.</div>
                 <Dropdown items={uatype_t} selected={data.uatype} label="UA Type" onChange={handleData("uatype")} />
-                {["operator", "description", "manufacturer", "model"].map(key =>
-                  <div className="form" key={key}>
-                    <label className="w">{key}</label>
-                    <input type="input" value={data[key]} size="24" maxLength="24" onChange={handleData(key)} />
-                  </div>
-                )}
+                <div className="form">
+                  <label className="w">Operator ID</label>
+                  <input type="input" value={data.operator} size="24" maxLength="24" onChange={handleData("operator")} />
+                </div>
+                <div className="form">
+                  <label className="w">Self ID</label>
+                  <input type="input" value={data.description} size="24" maxLength="24" onChange={handleData("description")} />
+                </div>
+                <div className="form">
+                  <label className="w">Local Manufacturer</label>
+                  <input type="input" value={data.manufacturer} size="24" maxLength="24" onChange={handleData("manufacturer")} />
+                </div>
+                <div className="form">
+                  <label className="w">Local Model</label>
+                  <input type="input" value={data.model} size="24" maxLength="24" onChange={handleData("model")} />
+                </div>
+                <div className="field-note">Local Manufacturer and Local Model are shown in TondID UI only. Most detectors derive vendor from the UAS ID format, not from separate RF fields.</div>
               </div>
 
               <div className="setting swarm-card">
@@ -1149,7 +1161,7 @@ function App() {
                           <input type="input" value={slot.rid || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "rid")} />
                         </div>
                         <div className="form">
-                          <label className="w">Operator</label>
+                          <label className="w">Operator ID</label>
                           <input type="input" disabled={idx > 0 && sharedLocks.operator} value={slot.operator || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "operator")} />
                         </div>
                         <div className="form">
@@ -1157,11 +1169,11 @@ function App() {
                           <input type="input" value={slot.description || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "description")} />
                         </div>
                         <div className="form">
-                          <label className="w">Manufacturer</label>
+                          <label className="w">Local Manufacturer</label>
                           <input type="input" disabled={idx > 0 && sharedLocks.manufacturer} value={slot.manufacturer || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "manufacturer")} />
                         </div>
                         <div className="form">
-                          <label className="w">Model</label>
+                          <label className="w">Local Model</label>
                           <input type="input" disabled={idx > 0 && sharedLocks.model} value={slot.model || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "model")} />
                         </div>
                         <Dropdown items={uatype_t} selected={slot.uatype || 2} label="UA Type" disabled={idx > 0 && sharedLocks.uatype} onChange={handleSlotData(idx, "uatype")} />
@@ -1250,9 +1262,9 @@ function App() {
                 <Popup>
                   <sub>RemoteID</sub>
                   <div>{u.rid}</div>
-                  <sub>Operator</sub>
+                  <sub>Operator ID</sub>
                   <div>{u.operator}</div>
-                  <sub>Manufacturer / Model</sub>
+                  <sub>Local Metadata</sub>
                   <div>{[u.manufacturer, u.model].filter(Boolean).join(" ") || u.description}</div>
                   <sub>Self ID</sub>
                   <div>{u.description}</div>

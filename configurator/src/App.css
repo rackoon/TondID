@@ -533,6 +533,13 @@ hr {
   margin-bottom: 0;
 }
 
+.field-note {
+  margin: -2px 0 14px;
+  color: var(--md-sys-color-on-surface-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .field-label,
 .form label {
   color: var(--md-sys-color-on-surface-muted);
