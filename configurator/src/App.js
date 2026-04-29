@@ -197,9 +197,8 @@ const RadiusMode = [500, 1000, 2000, 3000, 5000, 10000];
 const MinRadius = 500;
 const InitialPosition = { lat: 59.437, lng: 24.7536, op_lat: 59.437, op_lng: 24.7536, alt: 120, op_alt: 0, spd: 25, hdg: 0, sats: 10 };
 const MaxTotalUas = 5;
-const MaxGhostUas = MaxTotalUas - 1;
-const InitialPest = { pe_lat: 59.437, pe_lng: 24.7536, pe_radius: MinRadius, pe_spawn: MaxTotalUas, ghost_id_scheme: 0, ghost_id_prefix: "1596GHOSTPREFIX000", ghost_flight_mode: 2, ghost_altitude_mode: 1 };
-const InitialSlot = { mac: "", rid: "", operator: "", description: "", manufacturer: "", model: "", uatype: 2, idtype: 1 };
+const InitialPest = { pe_lat: 59.437, pe_lng: 24.7536, pe_radius: MinRadius, pe_spawn: 1, ghost_id_scheme: 0, ghost_id_prefix: "1596GHOSTPREFIX000", ghost_flight_mode: 2, ghost_altitude_mode: 1 };
+const InitialSlot = { enabled: false, mac: "", rid: "", operator: "", description: "", manufacturer: "", model: "", uatype: 2, idtype: 1 };
 const SlotSharedFields = ["operator", "manufacturer", "model", "uatype", "idtype"];
 const InitialSharedLocks = { operator: true, manufacturer: true, model: true, uatype: true, idtype: true };
 const SlotFieldLabels = {
@@ -265,8 +264,9 @@ const defaultMacForSlot = (base, slot) => {
   parts[5] = (parts[5] + slot) & 0xFF;
   return parts.map(padHex).join(":");
 };
-const makePrimarySlot = (state, baseMac = "") => ({
+const makePrimarySlot = (state, baseMac = "", enabled = true) => ({
   ...InitialSlot,
+  enabled,
   mac: normalizeMac(state.mac || baseMac),
   rid: state.rid || "",
   operator: state.operator || "",
@@ -276,8 +276,9 @@ const makePrimarySlot = (state, baseMac = "") => ({
   uatype: I(state.uatype) || 2,
   idtype: I(state.idtype) || 1,
 });
-const emptySlotList = () => Array.from({ length: MaxTotalUas }, (_, idx) => ({ ...InitialSlot, index: idx }));
+const emptySlotList = () => Array.from({ length: MaxTotalUas }, (_, idx) => ({ ...InitialSlot, enabled: idx === 0, index: idx }));
 const emptySlotErrors = () => Array.from({ length: MaxTotalUas }, () => []);
+const countEnabledSlots = (slotList = []) => slotList.filter(slot => slot.enabled).length;
 
 
 const LocationMarker = ({ onEvent }) => {
@@ -404,12 +405,6 @@ function App() {
     }
   }
 
-  const handleGhostCount = event => {
-    const ghosts = Math.min(MaxGhostUas, Math.max(0, Number.parseInt(event.target.value || "0", 10) || 0));
-    setDataUpdated(true);
-    setData({ ...data, pe_spawn: ghosts + 1 });
-  }
-
   const requestSlotSync = () => {
     for (let slot = 0; slot < MaxTotalUas; slot++) {
       serialCommand(Commands.get_slot_data, [slot]);
@@ -446,11 +441,19 @@ function App() {
     });
   };
 
+  const handleSlotEnabled = slotIndex => () => {
+    setDataUpdated(true);
+    setError(false);
+    setSlotErrors(prev => prev.map((entry, idx) => idx === slotIndex ? [] : entry));
+    setSlots(prev => prev.map((slot, idx) => idx === slotIndex ? { ...slot, enabled: !slot.enabled } : slot));
+  };
+
   const handleClonePrimaryToSlots = () => {
-    const primary = makePrimarySlot(data, data.mac);
+    const primary = makePrimarySlot(data, data.mac, slots[0]?.enabled ?? true);
     setDataUpdated(true);
     setSlots(prev => syncLockedFields(prev.map((slot, idx) => ({
       ...slot,
+      enabled: idx === 0 ? primary.enabled : slot.enabled,
       mac: idx === 0 ? primary.mac : defaultMacForSlot(primary.mac || data.mac || "", idx),
       rid: idx === 0 ? primary.rid : `${primary.rid.slice(0, 17)}${String(idx).padStart(3, "0")}`.slice(0, 20),
       operator: primary.operator,
@@ -475,12 +478,13 @@ function App() {
   const handleRandomizeSlots = () => {
     const profiles = ["GUARD", "TRACK", "WATCH", "GRID", "SHIELD"];
     setDataUpdated(true);
-    setSlots(prev => syncLockedFields(prev.map((slot, idx) => {
-      const rid = `1596${randomHex(13)}`.slice(0, 20);
-      const label = profiles[idx % profiles.length];
-      return {
-        ...slot,
-        mac: defaultMacForSlot(slot.mac || data.mac || "", idx) || slot.mac,
+      setSlots(prev => syncLockedFields(prev.map((slot, idx) => {
+        const rid = `1596${randomHex(13)}`.slice(0, 20);
+        const label = profiles[idx % profiles.length];
+        return {
+          ...slot,
+          enabled: idx === 0 ? true : slot.enabled,
+          mac: defaultMacForSlot(slot.mac || data.mac || "", idx) || slot.mac,
         rid,
         operator: `EST${randomHex(12)}`.slice(0, 20),
         description: `${label} ${idx}`.slice(0, 20),
@@ -515,12 +519,12 @@ function App() {
     });
   };
 
-  const validateSlots = (slotList, activeSlots) => {
+  const validateSlots = (slotList) => {
     const errorsBySlot = emptySlotErrors();
     const activeMacs = new Map();
     const activeRids = new Map();
     slotList.forEach((slot, idx) => {
-      if (idx >= activeSlots) {
+      if (!slot.enabled) {
         return;
       }
       const mac = normalizeMac(slot.mac || "");
@@ -573,6 +577,7 @@ function App() {
     });
     setSlots(prev => prev.map((slot, idx) => idx === 0 ? {
       ...slot,
+      enabled: slot.enabled ?? true,
       mac: normalizeMac(data.mac || slot.mac),
       rid,
       operator,
@@ -608,15 +613,16 @@ function App() {
       ...o,
       appMode: o.appMode ?? modeRef.current.appMode,
     };
-    const primarySlot = makePrimarySlot(dt, dt.mac);
+    const primarySlot = makePrimarySlot(dt, dt.mac, slots[0]?.enabled ?? true);
     const slotPayload = syncLockedFields(emptySlotList().map((slot, idx) => {
       const current = slots[idx] || slot;
       if (idx === 0) {
-        return { ...current, ...primarySlot };
+        return { ...current, ...primarySlot, enabled: current.enabled ?? primarySlot.enabled };
       }
       return {
         ...InitialSlot,
         ...current,
+        enabled: current.enabled ?? false,
         mac: normalizeMac(current.mac || defaultMacForSlot(primarySlot.mac || dt.mac || "", idx)),
         rid: current.rid || "",
         operator: current.operator || dt.operator || "",
@@ -627,8 +633,8 @@ function App() {
         idtype: I(current.idtype) || I(dt.idtype) || 1,
       };
     }));
-    const activeSlots = Math.min(MaxTotalUas, I(dt.pe_spawn) || 1);
-    const validation = validateSlots(slotPayload, activeSlots);
+    const totalEnabled = countEnabledSlots(slotPayload);
+    const validation = validateSlots(slotPayload);
     setSlotErrors(validation);
     if (validation.some(entry => entry.length > 0)) {
       setError("Paranda slotide vead enne Apply vajutamist.");
@@ -637,13 +643,14 @@ function App() {
     setError(false);
     serialCommand(Commands.store_data, [
       // Defaults
-      S(dt.rid), S(dt.operator), S(dt.description), dt.uatype, dt.idtype, dt.lat, dt.lng, dt.alt, dt.op_lat, dt.op_lng, dt.op_alt, dt.spd, dt.sats, dt.mac, dt.appMode, dt.pe_lat, dt.pe_lng, dt.pe_radius, dt.pe_spawn,
+      S(dt.rid), S(dt.operator), S(dt.description), dt.uatype, dt.idtype, dt.lat, dt.lng, dt.alt, dt.op_lat, dt.op_lng, dt.op_alt, dt.spd, dt.sats, dt.mac, dt.appMode, dt.pe_lat, dt.pe_lng, dt.pe_radius, totalEnabled,
       // External
       dt.ext_mode || 0, dt.ext_baud || 0, dt.ext_rx_pin || 0, dt.ext_tx_pin || 0, dt.ext_shift_mode || 0, dt.ext_shift_radius || 0, dt.ext_shift_min || 0, dt.ext_shift_max || 0,
       S(dt.manufacturer || ""), S(dt.model || ""), dt.ghost_id_scheme || 0, S(dt.ghost_id_prefix || ""), dt.ghost_flight_mode || 0, dt.ghost_altitude_mode || 0
     ]);
     slotPayload.forEach((slot, idx) => serialCommand(Commands.store_slot_data, [
       idx,
+      slot.enabled ? 1 : 0,
       S(slot.mac || ""),
       S(slot.rid || ""),
       S(slot.operator || ""),
@@ -818,14 +825,15 @@ function App() {
         if (slotIndex >= 0 && slotIndex < MaxTotalUas) {
           setSlots(prev => prev.map((slot, idx) => idx === slotIndex ? {
             ...slot,
-            mac: p[2] || "",
-            rid: p[3] || "",
-            operator: p[4] || "",
-            description: p[5] || "",
-            manufacturer: p[6] || "",
-            model: p[7] || "",
-            uatype: I(p[8]) || 2,
-            idtype: I(p[9]) || 1,
+            enabled: I(p[2]) === 1,
+            mac: p[3] || "",
+            rid: p[4] || "",
+            operator: p[5] || "",
+            description: p[6] || "",
+            manufacturer: p[7] || "",
+            model: p[8] || "",
+            uatype: I(p[9]) || 2,
+            idtype: I(p[10]) || 1,
           } : slot));
           setSlotErrors(prev => prev.map((entry, idx) => idx === slotIndex ? [] : entry));
         }
@@ -860,7 +868,7 @@ function App() {
           op_alt: p[12], spd: p[13], sats: p[14], mac: p[15],
           pe_lat: keepPest ? data.pe_lat : pe_lat,
           pe_lng: keepPest ? data.pe_lng : pe_lng,
-            pe_radius: I(p[19]), pe_spawn: Math.min(MaxTotalUas, I(p[20]) || 1), 
+            pe_radius: I(p[19]), pe_spawn: Math.min(MaxTotalUas, Math.max(0, I(p[20]))), 
           ext_mode: I(p[21]), ext_baud: I(p[22]), ext_rx_pin: I(p[23]), ext_tx_pin: I(p[24]), ext_shift_mode: I(p[25]), ext_shift_radius: I(p[26]), ext_shift_min: I(p[27]), ext_shift_max: I(p[28]),
           manufacturer: p[30] || data.manufacturer || "",
           model: p[31] || data.model || "",
@@ -1017,6 +1025,11 @@ function App() {
   }, [connected]);
 
   useEffect(() => {
+    const totalEnabled = countEnabledSlots(slots);
+    setData(prev => prev.pe_spawn === totalEnabled ? prev : { ...prev, pe_spawn: totalEnabled });
+  }, [slots]);
+
+  useEffect(() => {
     const onKeyDown = e => {
       if (e.key === "Escape") {
         setShowProfile(false);
@@ -1077,10 +1090,6 @@ function App() {
 
               <div className="setting">
                 <h3>Swarm Defaults</h3>
-                <div className="form">
-                  <label className="w">Ghost Drones</label>
-                  <input type="input" value={Math.max(0, Math.min(MaxGhostUas, (I(data.pe_spawn) || 1) - 1))} size="24" maxLength="24" onChange={handleGhostCount} />
-                </div>
                 <Dropdown items={ghost_id_scheme_t} selected={data.ghost_id_scheme || 0} label="Ghost ID Scheme" onChange={handleData("ghost_id_scheme")} />
                 <div className="form">
                   <label className="w">Ghost ID Prefix</label>
@@ -1119,15 +1128,13 @@ function App() {
                 </div>
                 <div className="slot-grid">
                   {slots.map((slot, idx) => {
-                    const activeSlots = Math.min(MaxTotalUas, I(data.pe_spawn) || 1);
-                    const active = idx < activeSlots;
                     const errors = slotErrors[idx] || [];
                     return (
                       <div className="slot-card" key={idx}>
                         <div className="slot-card-header">
                           <strong>Slot {idx + 1}</strong>
                           <div className="slot-card-actions">
-                            <span className={`slot-chip ${active ? "active" : ""}`}>{active ? "ACTIVE" : "IDLE"}</span>
+                            <Button selected={slot.enabled} secondary={!slot.enabled} name={slot.enabled ? "ON" : "OFF"} onPress={handleSlotEnabled(idx)} />
                             <Button name={"Copy"} onPress={handleCopySlot(idx)} />
                             <Button name={"Paste"} disabled={!slotClipboard} onPress={handlePasteSlot(idx)} />
                           </div>
@@ -1355,9 +1362,9 @@ function App() {
           </Display>
           <Display condition={appMode === AppMode.Pest}>
             <div className="map-control inline rail-card">
-              <RemoteControlButton name="RNG" steps={[1, 2, 3, 4, 5, 6]} onChange={handlePestRadius} />
-                <p>{Math.min(MaxTotalUas, I(data.pe_spawn) || 1)} UAS RANGE {data.pe_radius || MinRadius}m</p>
-            </div>
+                <RemoteControlButton name="RNG" steps={[1, 2, 3, 4, 5, 6]} onChange={handlePestRadius} />
+                <p>{countEnabledSlots(slots)} UAS RANGE {data.pe_radius || MinRadius}m</p>
+              </div>
           </Display>
           <div className="map-control sl debug-card">
             <div>DEVICE {appModeLabel(debug.deviceAppMode)} / {flyModeLabel(debug.deviceFlyMode)} / {pathModeLabel(debug.devicePathMode)}</div>

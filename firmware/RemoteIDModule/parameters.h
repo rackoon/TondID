@@ -59,6 +59,7 @@ public:
     uint8_t mock_app_mode = 1;
     uint8_t mock_fly_mode = 0;
     uint8_t mock_path_mode = 0;
+    uint8_t mock_slot_enabled[MOCK_SLOT_COUNT] = {1, 0, 0, 0, 0};
     char mock_slot_mac[MOCK_SLOT_COUNT][21] = {};
     char mock_slot_uas_id[MOCK_SLOT_COUNT][21] = {};
     char mock_slot_operator_id[MOCK_SLOT_COUNT][21] = {};
