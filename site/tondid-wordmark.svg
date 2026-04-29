@@ -1,0 +1,14 @@
+<svg width="1200" height="280" viewBox="0 0 1200 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wordAccent" x1="708" y1="76" x2="960" y2="208" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ADC6FF"/>
+      <stop offset="1" stop-color="#86D7C4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="280" rx="42" fill="#0D1118"/>
+  <rect x="18" y="18" width="1164" height="244" rx="28" stroke="white" stroke-opacity="0.08" stroke-width="2"/>
+  <text x="96" y="175" fill="#F4F7FF" font-family="Segoe UI, Roboto Flex, Arial, sans-serif" font-size="118" font-weight="600">Tond</text>
+  <rect x="714" y="78" width="206" height="122" rx="34" fill="url(#wordAccent)" fill-opacity="0.14" stroke="url(#wordAccent)" stroke-width="2"/>
+  <text x="761" y="165" fill="#DCE7FF" font-family="Segoe UI, Roboto Flex, Arial, sans-serif" font-size="82" font-weight="700" letter-spacing="2">ID</text>
+  <path d="M992 102C1023.48 102 1049 127.52 1049 159C1049 190.48 1023.48 216 992 216" stroke="url(#wordAccent)" stroke-width="10" stroke-linecap="round"/>
+</svg>

@@ -16,6 +16,7 @@ TondID is meant to sit behind systems that need to observe, verify, or harden ag
 - `docs/` - screenshots, notes, and operating references
 - `scripts/qa-flash.ps1` - Windows helper for repeatable flashing
 - `assets/` - brand marks, monograms, and presentation assets
+- `site/` - static public landing package for domain deployment
 
 ## Product principles
 
