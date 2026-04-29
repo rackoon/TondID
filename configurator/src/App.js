@@ -662,7 +662,9 @@ function App() {
   const handleModeUpdate = (o = {}) => {
     const dt = { ...modeRef.current, spd: position.spd, alt: position.alt, ...o }
     modeRef.current = { appMode: dt.appMode, flyMode: dt.flyMode, pathMode: dt.pathMode };
-    handleDataUpdate({ appMode: dt.appMode });
+    if (Object.prototype.hasOwnProperty.call(o, "appMode")) {
+      setData(prev => ({ ...prev, appMode: dt.appMode }));
+    }
     const pp = path.length ? toPath([...path]) : [];
     console.log(pp);
     serialCommand(Commands.store_mode, [dt.appMode + "", dt.flyMode + "", dt.pathMode + "", dt.spd + "", dt.alt + "", path.length, ...deflatePath(pp)]);
