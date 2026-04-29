@@ -1,6 +1,6 @@
 # TondID
 
-![TondID wordmark](./assets/tondid-wordmark.svg)
+![TondID logo](./assets/TontID_logo.svg)
 
 TondID is a private tooling stack for identity, presence, and protection testing on ESP32-class hardware. It packages a modern local configurator, persistent firmware profiles, mock swarm behavior, and the supporting material needed to run repeatable QA sessions without depending on cloud services.
 
@@ -47,9 +47,7 @@ Brand usage rule:
 - use `TID` in constrained placements such as badges, app icons, print labels, and tight UI surfaces
 
 Primary brand assets:
-- `assets/tondid-wordmark.svg`
-- `assets/tondid-mark.svg`
-- `assets/tid-monogram.svg`
+- `assets/TontID_logo.svg`
 
 ## Domains
 

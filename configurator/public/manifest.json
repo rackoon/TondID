@@ -3,12 +3,12 @@
   "name": "TondID Configurator",
   "icons": [
     {
-      "src": "tondid-mark.svg",
+      "src": "TontID_logo.svg",
       "type": "image/svg+xml",
       "sizes": "any"
     },
     {
-      "src": "tid-monogram.svg",
+      "src": "TontID_logo.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"

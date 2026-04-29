@@ -1030,10 +1030,9 @@ function App() {
   if (!connected) {
     return (
       <div id="screen">
-        <img className="screen-logo" src={`${process.env.PUBLIC_URL}/tondid-mark.svg`} alt="TondID logo" />
         <div className="screen-badge">Remote ID control surface</div>
         <div className="screen-brand">
-          <img className="screen-wordmark" src={`${process.env.PUBLIC_URL}/tondid-wordmark.svg`} alt="TondID wordmark" />
+          <img className="screen-wordmark" src={`${process.env.PUBLIC_URL}/TontID_logo.svg`} alt="TontID logo" />
           <span className="screen-shortmark">TID</span>
         </div>
         <div className="screen-subtitle">Modernized local control for the ESP32-based Remote ID mock rig</div>
