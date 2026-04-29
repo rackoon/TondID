@@ -138,6 +138,18 @@ input[type="input"],
   margin-top: 10px;
 }
 
+#map .leaflet-control > .map-control + .map-control,
+#map .leaflet-control > .map-control + .telemetry,
+#map .leaflet-control > .map-control + .sl,
+#map .leaflet-control > .telemetry + .map-control,
+#map .leaflet-control > .sl + .map-control,
+#map .leaflet-control > .telemetry + .sl,
+#map .leaflet-control > .sl + .telemetry,
+#map .leaflet-control > .sl + .sl,
+#map .leaflet-control > .telemetry + .telemetry {
+  margin-top: 8px;
+}
+
 #map .leaflet-control-attribution {
   background: rgba(10, 12, 18, 0.78);
   color: var(--md-sys-color-on-surface-muted);
