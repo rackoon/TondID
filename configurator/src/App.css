@@ -540,6 +540,56 @@ hr {
   line-height: 1.5;
 }
 
+.rid-insight {
+  display: grid;
+  gap: 8px;
+  margin: -2px 0 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.032);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rid-insight.confidence-high {
+  border-color: rgba(61, 220, 132, 0.22);
+}
+
+.rid-insight.confidence-medium {
+  border-color: rgba(255, 195, 86, 0.22);
+}
+
+.rid-insight.confidence-low {
+  border-color: rgba(255, 91, 91, 0.22);
+}
+
+.rid-insight-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  font-size: 12px;
+}
+
+.rid-insight-row strong {
+  color: var(--md-sys-color-on-surface);
+}
+
+.rid-insight-row span,
+.rid-insight-list {
+  color: var(--md-sys-color-on-surface-muted);
+}
+
+.rid-insight-list {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.rid-insight-list.error {
+  color: #ffb4c3;
+}
+
 .field-label,
 .form label {
   color: var(--md-sys-color-on-surface-muted);

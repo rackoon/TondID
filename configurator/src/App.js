@@ -265,6 +265,110 @@ const defaultMacForSlot = (base, slot) => {
   parts[5] = (parts[5] + slot) & 0xFF;
   return parts.map(padHex).join(":");
 };
+const KnownVendorHints = [
+  { manufacturer: "DJI", tokens: ["DJI"], modelTokens: ["MAVIC 4 PRO", "MAVIC 3", "MAVIC", "MINI 4 PRO", "MINI 3", "MINI", "AVATA 2", "AVATA", "MATRICE", "INSPIRE", "PHANTOM"] },
+  { manufacturer: "AUTEL", tokens: ["AUTEL"], modelTokens: ["EVO MAX", "EVO LITE", "EVO NANO", "EVO II", "EVO"] },
+  { manufacturer: "PARROT", tokens: ["PARROT"], modelTokens: ["ANAFI", "BEBOP"] },
+  { manufacturer: "SKYDIO", tokens: ["SKYDIO"], modelTokens: ["SKYDIO 2", "X10", "X2"] },
+];
+const prettifyToken = (value = "") => value
+  .split(" ")
+  .filter(Boolean)
+  .map(part => part.length <= 3 || /^\d/.test(part) ? part.toUpperCase() : `${part[0]}${part.slice(1).toLowerCase()}`)
+  .join(" ");
+const classifyUasIdFormat = (normalized, idType) => {
+  if (!normalized) {
+    return { kind: "empty", confidence: "None", issues: [], notes: ["No value entered yet."] };
+  }
+  const issues = [];
+  const notes = [];
+  const hasOnlyDetectorChars = /^[A-Z0-9._ -]+$/.test(normalized);
+  if (!hasOnlyDetectorChars) {
+    issues.push("Contains characters outside the detector-safe set.");
+  }
+  if (normalized.length > 20) {
+    issues.push("Exceeds 20 characters.");
+  }
+  const tightSerial = /^[A-Z0-9]{20}$/.test(normalized);
+  const registrationLike = /^[A-Z0-9][A-Z0-9._ -]{3,19}$/.test(normalized);
+  let kind = "unknown";
+  let confidence = "Low";
+  if (idType === 1) {
+    if (tightSerial) {
+      kind = "serial";
+      confidence = "High";
+      notes.push("Strong detector-facing shape for a serial-number Basic ID.");
+    } else if (registrationLike) {
+      kind = "serial-ish";
+      confidence = "Medium";
+      notes.push("Detector may accept it, but many receivers expect a tight 20-character serial.");
+    } else {
+      kind = "invalid";
+      notes.push("Weak fit for SERIAL_NUMBER.");
+    }
+  } else if (idType === 2) {
+    kind = registrationLike ? "registration" : "invalid";
+    confidence = registrationLike ? "Medium" : "Low";
+    notes.push("Looks like a registration-style ID rather than a detector-mapped serial.");
+  } else if (idType === 3 || idType === 4) {
+    kind = registrationLike ? "session" : "invalid";
+    confidence = "Low";
+    notes.push("UUID/session identifiers are usually detector-readable but less likely to map to vendor/model.");
+  } else {
+    kind = tightSerial ? "serial" : registrationLike ? "freeform" : "invalid";
+    confidence = tightSerial ? "Medium" : "Low";
+  }
+  return { kind, confidence, issues, notes };
+};
+const inferUasIdMetadata = (value = "", idType = 0) => {
+  const normalized = (value || "").trim().toUpperCase();
+  const text = normalized.replace(/[_-]+/g, " ");
+  const format = classifyUasIdFormat(normalized, I(idType));
+  let manufacturer = "";
+  let model = "";
+  for (const vendor of KnownVendorHints) {
+    if (vendor.tokens.some(token => text.includes(token))) {
+      manufacturer = vendor.manufacturer;
+    }
+    const matchedModel = vendor.modelTokens.find(token => text.includes(token));
+    if (matchedModel) {
+      manufacturer = manufacturer || vendor.manufacturer;
+      model = prettifyToken(matchedModel);
+      break;
+    }
+  }
+  const notes = [...format.notes];
+  if (manufacturer || model) {
+    notes.push("Manufacturer/model hint came from literal text inside the entered value.");
+  } else if (format.kind === "serial" || format.kind === "serial-ish") {
+    notes.push("Local UI cannot prove vendor/model from serial alone. Leading detectors often use their own lookup databases.");
+  }
+  return {
+    normalized,
+    format,
+    manufacturer,
+    model,
+    detectorConfidence: format.confidence,
+    notes,
+  };
+};
+const UasIdInsight = ({ value, idType }) => {
+  const insight = inferUasIdMetadata(value, idType);
+  if (!insight.normalized) {
+    return null;
+  }
+  const confidenceClass = `confidence-${insight.detectorConfidence.toLowerCase()}`;
+  return (
+    <div className={`rid-insight ${confidenceClass}`}>
+      <div className="rid-insight-row"><strong>Format</strong><span>{insight.format.kind.replace(/-/g, " ")}</span></div>
+      <div className="rid-insight-row"><strong>Detector confidence</strong><span>{insight.detectorConfidence}</span></div>
+      <div className="rid-insight-row"><strong>Manufacturer hint</strong><span>{insight.manufacturer || "No local match"}</span></div>
+      <div className="rid-insight-row"><strong>Model hint</strong><span>{insight.model || "No local match"}</span></div>
+      {insight.format.issues.length ? <div className="rid-insight-list error">{insight.format.issues.map((issue, idx) => <div key={idx}>{issue}</div>)}</div> : null}
+      <div className="rid-insight-list">{insight.notes.map((note, idx) => <div key={idx}>{note}</div>)}</div>
+    </div>
+  );
+};
 const makePrimarySlot = (state, baseMac = "", enabled = true) => ({
   ...InitialSlot,
   enabled,
@@ -545,6 +649,11 @@ function App() {
         errorsBySlot[idx].push(`UAS ID kattub slotiga ${activeRids.get(rid) + 1}.`);
       } else {
         activeRids.set(rid, idx);
+      }
+
+      const ridInsight = inferUasIdMetadata(rid, slot.idtype);
+      if (slot.idtype === 1 && ridInsight.format.confidence === "Low") {
+        errorsBySlot[idx].push("SERIAL_NUMBER type looks weak for detector-visible serial inference.");
       }
 
       if (!(slot.operator || "").trim()) {
@@ -1080,6 +1189,7 @@ function App() {
                   <label className="w">UAS ID</label>
                   <input type="input" value={data.rid} onChange={handleData("rid")} size="24" maxLength="24" />
                 </div>
+                <UasIdInsight value={data.rid} idType={data.idtype} />
                 <div className="field-note">Detector-visible identity comes from UAS ID, ID Type, UA Type, Operator ID, and Self ID.</div>
                 <Dropdown items={uatype_t} selected={data.uatype} label="UA Type" onChange={handleData("uatype")} />
                 <div className="form">
@@ -1160,6 +1270,7 @@ function App() {
                           <label className="w">UAS ID</label>
                           <input type="input" value={slot.rid || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "rid")} />
                         </div>
+                        <UasIdInsight value={slot.rid} idType={slot.idtype} />
                         <div className="form">
                           <label className="w">Operator ID</label>
                           <input type="input" disabled={idx > 0 && sharedLocks.operator} value={slot.operator || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "operator")} />
