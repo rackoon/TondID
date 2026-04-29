@@ -306,7 +306,7 @@ input[type="input"],
 #modal .inner {
   width: min(100%, 1120px);
   min-height: calc(100% - 48px);
-  padding: 24px 24px 104px;
+  padding: 24px;
   border-radius: 32px;
   background: rgba(11, 14, 20, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -314,9 +314,6 @@ input[type="input"],
 }
 
 #modal .controls {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -329,8 +326,6 @@ input[type="input"],
 }
 
 #modal .controls.footer {
-  top: auto;
-  bottom: 0;
   margin-top: 32px;
 }
 
