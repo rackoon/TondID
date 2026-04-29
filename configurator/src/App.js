@@ -1058,7 +1058,7 @@ function App() {
             </div>
             <div className="settings-grid">
               <div className="setting">
-                <h3>Settings</h3>
+                <h3>Primary Identity</h3>
                 <div className="controls">
                   <Button onPress={handleRandomizeProfile} secondary name={"Randomize"} />
                   <Button onPress={handleUseIpHome} name={"Use IP Home"} />
@@ -1075,6 +1075,10 @@ function App() {
                     <input type="input" value={data[key]} size="24" maxLength="24" onChange={handleData(key)} />
                   </div>
                 )}
+              </div>
+
+              <div className="setting">
+                <h3>Swarm Defaults</h3>
                 <div className="form">
                   <label className="w">Ghost Drones</label>
                   <input type="input" value={Math.max(0, Math.min(MaxGhostUas, (I(data.pe_spawn) || 1) - 1))} size="24" maxLength="24" onChange={handleGhostCount} />
