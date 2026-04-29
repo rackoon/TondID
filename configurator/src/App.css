@@ -376,9 +376,14 @@ hr {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
+  align-items: start;
 }
 
 .settings-grid .setting {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  position: relative;
   margin: 0;
   padding: 22px 22px 10px;
   min-width: 0;
@@ -471,10 +476,16 @@ hr {
   margin-bottom: 14px;
   min-width: 0;
   width: 100%;
+  flex: 0 0 auto;
 }
 
 .form > .dropdown-field {
   grid-column: 1 / -1;
+}
+
+.setting > .dropdown-field:last-child,
+.setting > .form:last-child {
+  margin-bottom: 0;
 }
 
 .field-label,
