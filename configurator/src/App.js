@@ -849,6 +849,7 @@ function App() {
         setData({ 
           ...data, 
           version: p[1], rid: p[2], operator: p[3], description: p[4], uatype: p[5], idtype: p[6],
+          appMode: I(p[16]),
           lat: keepOrigin ? data.lat || position.lat : lat,
           lng: keepOrigin ? data.lng || position.lng : lng,
           alt: p[9],
