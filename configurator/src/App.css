@@ -91,9 +91,31 @@ input[type="input"],
 }
 
 .app-button.selected {
-  background: var(--md-sys-color-primary-container);
-  border-color: rgba(173, 198, 255, 0.36);
-  color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-primary-container);
+    border-color: rgba(173, 198, 255, 0.36);
+    color: var(--md-sys-color-primary);
+}
+
+.app-button.status-on {
+    background: rgba(61, 220, 132, 0.18);
+    border-color: rgba(61, 220, 132, 0.42);
+    color: #8cf0b2;
+}
+
+.app-button.status-on:hover:not(:disabled) {
+    background: rgba(61, 220, 132, 0.26);
+    border-color: rgba(61, 220, 132, 0.52);
+}
+
+.app-button.status-off {
+    background: rgba(255, 91, 91, 0.16);
+    border-color: rgba(255, 91, 91, 0.34);
+    color: #ff9f9f;
+}
+
+.app-button.status-off:hover:not(:disabled) {
+    background: rgba(255, 91, 91, 0.24);
+    border-color: rgba(255, 91, 91, 0.44);
 }
 
 .app-button:disabled {

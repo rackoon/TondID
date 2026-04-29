@@ -210,10 +210,11 @@ const SlotFieldLabels = {
 };
 
 
-const Button = ({ name, secondary, selected, disabled, onPress }) => {
+const Button = ({ name, secondary, selected, disabled, onPress, className = "" }) => {
   const classes = ["app-button"];
   if (selected) classes.push("selected");
   if (secondary) classes.push("secondary");
+  if (className) classes.push(className);
   return (
     <button className={classes.join(" ")} disabled={disabled} onClick={onPress}>{name}</button>
   )
@@ -1134,7 +1135,7 @@ function App() {
                         <div className="slot-card-header">
                           <strong>Slot {idx + 1}</strong>
                           <div className="slot-card-actions">
-                            <Button selected={slot.enabled} secondary={!slot.enabled} name={slot.enabled ? "ON" : "OFF"} onPress={handleSlotEnabled(idx)} />
+                            <Button selected={slot.enabled} name={slot.enabled ? "ON" : "OFF"} className={slot.enabled ? "status-on" : "status-off"} onPress={handleSlotEnabled(idx)} />
                             <Button name={"Copy"} onPress={handleCopySlot(idx)} />
                             <Button name={"Paste"} disabled={!slotClipboard} onPress={handlePasteSlot(idx)} />
                           </div>
