@@ -1069,7 +1069,7 @@ function App() {
               <Button onPress={handleShowProfile(false)} name={"Cancel"} />
             </div>
             <div className="settings-grid">
-              <div className="setting">
+              <div className="setting primary-card">
                 <h3>Primary Identity</h3>
                 <div className="controls">
                   <Button onPress={handleRandomizeProfile} secondary name={"Randomize"} />
@@ -1089,7 +1089,7 @@ function App() {
                 )}
               </div>
 
-              <div className="setting">
+              <div className="setting swarm-card">
                 <h3>Swarm Defaults</h3>
                 <Dropdown items={ghost_id_scheme_t} selected={data.ghost_id_scheme || 0} label="Ghost ID Scheme" onChange={handleData("ghost_id_scheme")} />
                 <div className="form">
@@ -1100,7 +1100,7 @@ function App() {
                 <Dropdown items={ghost_altitude_mode_t} selected={data.ghost_altitude_mode || 0} label="Ghost Altitude Mode" onChange={handleData("ghost_altitude_mode")} />
               </div>
 
-              <div className="setting">
+              <div className="setting tuning-card">
                 <h3>Tuning</h3>
                 {[["Origin Lat", "lat"], ["Origin Lng", "lng"], ["Origin Alt", "alt"], ["Operator Lat", "op_lat"], ["Operator Lng", "op_lng"], ["Operator Alt", "op_alt"], ["Speed", "spd"], ["Satellites", "sats"], ["MAC Address", "mac"]].map(ref =>
                   <div className="form" key={ref[1]}>

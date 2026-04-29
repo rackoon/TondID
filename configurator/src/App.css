@@ -422,6 +422,21 @@ hr {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.settings-grid .primary-card {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.settings-grid .swarm-card {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.settings-grid .tuning-card {
+  grid-column: 2;
+  grid-row: 2;
+}
+
 .section-span-full {
   grid-column: 1 / -1;
 }
@@ -710,6 +725,13 @@ input[type="input"]:disabled,
   .settings-grid {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .settings-grid .primary-card,
+  .settings-grid .swarm-card,
+  .settings-grid .tuning-card {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .slot-grid {
