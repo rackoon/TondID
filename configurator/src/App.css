@@ -424,17 +424,17 @@ hr {
 
 .settings-grid .primary-card {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 1;
 }
 
 .settings-grid .swarm-card {
-  grid-column: 2;
-  grid-row: 1;
+  grid-column: 1;
+  grid-row: 2;
 }
 
 .settings-grid .tuning-card {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1 / span 2;
 }
 
 .section-span-full {
