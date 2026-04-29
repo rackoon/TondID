@@ -200,6 +200,15 @@ const MaxTotalUas = 5;
 const MaxGhostUas = MaxTotalUas - 1;
 const InitialPest = { pe_lat: 59.437, pe_lng: 24.7536, pe_radius: MinRadius, pe_spawn: MaxTotalUas, ghost_id_scheme: 0, ghost_id_prefix: "1596GHOSTPREFIX000", ghost_flight_mode: 2, ghost_altitude_mode: 1 };
 const InitialSlot = { mac: "", rid: "", operator: "", description: "", manufacturer: "", model: "", uatype: 2, idtype: 1 };
+const SlotSharedFields = ["operator", "manufacturer", "model", "uatype", "idtype"];
+const InitialSharedLocks = { operator: true, manufacturer: true, model: true, uatype: true, idtype: true };
+const SlotFieldLabels = {
+  operator: "Operator",
+  manufacturer: "Manufacturer",
+  model: "Model",
+  uatype: "UA Type",
+  idtype: "ID Type",
+};
 
 
 const Button = ({ name, secondary, selected, disabled, onPress }) => {
@@ -239,6 +248,8 @@ const hasZeroOrigin = (p) => F(p.lat) === 0 && F(p.lng) === 0;
 const randomHex = (len) => Array.from({ length: len }, () => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join("");
 const padHex = (n) => n.toString(16).toUpperCase().padStart(2, "0");
 const normalizeMac = (value = "") => value.toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 12).match(/.{1,2}/g)?.join(":") || "";
+const isValidMac = (value = "") => /^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/.test((value || "").toUpperCase());
+const isValidRid = (value = "") => /^[A-Z0-9._ -]{1,20}$/.test((value || "").toUpperCase());
 const defaultMacForSlot = (base, slot) => {
   const clean = (base || "").replace(/[^0-9A-F]/gi, "").toUpperCase();
   if (clean.length !== 12) {
@@ -261,6 +272,7 @@ const makePrimarySlot = (state, baseMac = "") => ({
   idtype: I(state.idtype) || 1,
 });
 const emptySlotList = () => Array.from({ length: MaxTotalUas }, (_, idx) => ({ ...InitialSlot, index: idx }));
+const emptySlotErrors = () => Array.from({ length: MaxTotalUas }, () => []);
 
 
 const LocationMarker = ({ onEvent }) => {
@@ -284,6 +296,9 @@ function App() {
   const [pest, setPest] = useState({});
   const [data, setData] = useState(InitialPest);
   const [slots, setSlots] = useState(emptySlotList());
+  const [slotErrors, setSlotErrors] = useState(emptySlotErrors());
+  const [slotClipboard, setSlotClipboard] = useState(null);
+  const [sharedLocks, setSharedLocks] = useState(InitialSharedLocks);
   const [dataUpdated, setDataUpdated] = useState(false);
   const [map, setMap] = useState(null)
   const [mapMode, setMapMode] = useState(MapMode.Pan);
@@ -350,6 +365,7 @@ function App() {
         setPest({});
         setTrail([]);
         setSlots(emptySlotList());
+        setSlotErrors(emptySlotErrors());
         setDebug({
           lastLine: "",
           lastType: "",
@@ -368,7 +384,19 @@ function App() {
 
   const handleData = name => event => {
     setDataUpdated(true);
-    setData({ ...data, [name]: event.target.value });
+    setError(false);
+    const value = event.target.value;
+    setData({ ...data, [name]: value });
+    if (SlotSharedFields.includes(name) && sharedLocks[name]) {
+      setSlots(prev => prev.map(slot => ({ ...slot, [name]: value })));
+    } else if (name === "rid") {
+      setSlots(prev => prev.map((slot, idx) => idx === 0 ? { ...slot, rid: value } : slot));
+    } else if (name === "description") {
+      setSlots(prev => prev.map((slot, idx) => idx === 0 ? { ...slot, description: value } : slot));
+    } else if (name === "mac") {
+      const normalized = normalizeMac(value);
+      setSlots(prev => prev.map((slot, idx) => idx === 0 ? { ...slot, mac: normalized } : slot));
+    }
   }
 
   const handleGhostCount = event => {
@@ -383,16 +411,40 @@ function App() {
     }
   };
 
+  const syncLockedFields = (slotList) => {
+    const primary = slotList[0] || InitialSlot;
+    return slotList.map((slot, idx) => {
+      if (idx === 0) {
+        return slot;
+      }
+      const next = { ...slot };
+      SlotSharedFields.forEach(field => {
+        if (sharedLocks[field]) {
+          next[field] = primary[field];
+        }
+      });
+      return next;
+    });
+  };
+
   const handleSlotData = (slotIndex, key) => event => {
     const value = key === "mac" ? normalizeMac(event.target.value) : event.target.value;
     setDataUpdated(true);
-    setSlots(prev => prev.map((slot, idx) => idx === slotIndex ? { ...slot, [key]: value } : slot));
+    setError(false);
+    setSlotErrors(prev => prev.map((entry, idx) => idx === slotIndex ? [] : entry));
+    setSlots(prev => {
+      const updated = prev.map((slot, idx) => idx === slotIndex ? { ...slot, [key]: value } : slot);
+      if (slotIndex === 0 && SlotSharedFields.includes(key) && sharedLocks[key]) {
+        return updated.map((slot, idx) => idx === 0 ? slot : { ...slot, [key]: value });
+      }
+      return updated;
+    });
   };
 
   const handleClonePrimaryToSlots = () => {
     const primary = makePrimarySlot(data, data.mac);
     setDataUpdated(true);
-    setSlots(prev => prev.map((slot, idx) => ({
+    setSlots(prev => syncLockedFields(prev.map((slot, idx) => ({
       ...slot,
       mac: idx === 0 ? primary.mac : defaultMacForSlot(primary.mac || data.mac || "", idx),
       rid: idx === 0 ? primary.rid : `${primary.rid.slice(0, 17)}${String(idx).padStart(3, "0")}`.slice(0, 20),
@@ -402,7 +454,7 @@ function App() {
       model: primary.model,
       uatype: primary.uatype,
       idtype: primary.idtype,
-    })));
+    }))));
   };
 
   const handleAutoMacs = () => {
@@ -417,7 +469,7 @@ function App() {
   const handleRandomizeSlots = () => {
     const profiles = ["GUARD", "TRACK", "WATCH", "GRID", "SHIELD"];
     setDataUpdated(true);
-    setSlots(prev => prev.map((slot, idx) => {
+    setSlots(prev => syncLockedFields(prev.map((slot, idx) => {
       const rid = `1596${randomHex(13)}`.slice(0, 20);
       const label = profiles[idx % profiles.length];
       return {
@@ -431,7 +483,64 @@ function App() {
         uatype: slot.uatype || 2,
         idtype: slot.idtype || 1,
       };
-    }));
+    })));
+  };
+
+  const handleCopySlot = slotIndex => () => {
+    setSlotClipboard({ ...slots[slotIndex] });
+  };
+
+  const handlePasteSlot = slotIndex => () => {
+    if (!slotClipboard) {
+      return;
+    }
+    setDataUpdated(true);
+    setSlots(prev => syncLockedFields(prev.map((slot, idx) => idx === slotIndex ? { ...slot, ...slotClipboard } : slot)));
+  };
+
+  const handleSharedLock = key => () => {
+    setDataUpdated(true);
+    setSharedLocks(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      if (next[key]) {
+        setSlots(current => current.map((slot, idx) => idx === 0 ? slot : { ...slot, [key]: current[0]?.[key] ?? slot[key] }));
+      }
+      return next;
+    });
+  };
+
+  const validateSlots = (slotList, activeSlots) => {
+    const errorsBySlot = emptySlotErrors();
+    const activeMacs = new Map();
+    const activeRids = new Map();
+    slotList.forEach((slot, idx) => {
+      if (idx >= activeSlots) {
+        return;
+      }
+      const mac = normalizeMac(slot.mac || "");
+      const rid = (slot.rid || "").toUpperCase().trim();
+
+      if (!mac || !isValidMac(mac)) {
+        errorsBySlot[idx].push("MAC peab olema kujul AA:BB:CC:DD:EE:FF.");
+      } else if (activeMacs.has(mac)) {
+        errorsBySlot[idx].push(`MAC kattub slotiga ${activeMacs.get(mac) + 1}.`);
+      } else {
+        activeMacs.set(mac, idx);
+      }
+
+      if (!rid || !isValidRid(rid)) {
+        errorsBySlot[idx].push("UAS ID peab olema 1-20 märki ja lubab A-Z, 0-9, tühikut, punkti, alakriipsu või sidekriipsu.");
+      } else if (activeRids.has(rid)) {
+        errorsBySlot[idx].push(`UAS ID kattub slotiga ${activeRids.get(rid) + 1}.`);
+      } else {
+        activeRids.set(rid, idx);
+      }
+
+      if (!(slot.operator || "").trim()) {
+        errorsBySlot[idx].push("Operator ei tohi aktiivsel slotil tühi olla.");
+      }
+    });
+    return errorsBySlot;
   };
 
   const handleRandomizeProfile = () => {
@@ -494,7 +603,7 @@ function App() {
       appMode: o.appMode ?? modeRef.current.appMode,
     };
     const primarySlot = makePrimarySlot(dt, dt.mac);
-    const slotPayload = emptySlotList().map((slot, idx) => {
+    const slotPayload = syncLockedFields(emptySlotList().map((slot, idx) => {
       const current = slots[idx] || slot;
       if (idx === 0) {
         return { ...current, ...primarySlot };
@@ -511,7 +620,15 @@ function App() {
         uatype: I(current.uatype) || I(dt.uatype) || 2,
         idtype: I(current.idtype) || I(dt.idtype) || 1,
       };
-    });
+    }));
+    const activeSlots = Math.min(MaxTotalUas, I(dt.pe_spawn) || 1);
+    const validation = validateSlots(slotPayload, activeSlots);
+    setSlotErrors(validation);
+    if (validation.some(entry => entry.length > 0)) {
+      setError("Paranda slotide vead enne Apply vajutamist.");
+      return;
+    }
+    setError(false);
     serialCommand(Commands.store_data, [
       // Defaults
       S(dt.rid), S(dt.operator), S(dt.description), dt.uatype, dt.idtype, dt.lat, dt.lng, dt.alt, dt.op_lat, dt.op_lng, dt.op_alt, dt.spd, dt.sats, dt.mac, dt.appMode, dt.pe_lat, dt.pe_lng, dt.pe_radius, dt.pe_spawn,
@@ -702,6 +819,7 @@ function App() {
             uatype: I(p[8]) || 2,
             idtype: I(p[9]) || 1,
           } : slot));
+          setSlotErrors(prev => prev.map((entry, idx) => idx === slotIndex ? [] : entry));
         }
       }
       if (c === "D") {
@@ -991,15 +1109,30 @@ function App() {
                   <Button onPress={handleAutoMacs} name={"Auto MACs"} />
                   <Button onPress={handleRandomizeSlots} name={"Randomize Slots"} />
                 </div>
+                <div className="controls wrap slot-locks">
+                  {SlotSharedFields.map(field => (
+                    <Button
+                      key={field}
+                      selected={sharedLocks[field]}
+                      onPress={handleSharedLock(field)}
+                      name={`${sharedLocks[field] ? "Lock" : "Free"} ${SlotFieldLabels[field]}`}
+                    />
+                  ))}
+                </div>
                 <div className="slot-grid">
                   {slots.map((slot, idx) => {
                     const activeSlots = Math.min(MaxTotalUas, I(data.pe_spawn) || 1);
                     const active = idx < activeSlots;
+                    const errors = slotErrors[idx] || [];
                     return (
                       <div className="slot-card" key={idx}>
                         <div className="slot-card-header">
                           <strong>Slot {idx + 1}</strong>
-                          <span className={`slot-chip ${active ? "active" : ""}`}>{active ? "ACTIVE" : "IDLE"}</span>
+                          <div className="slot-card-actions">
+                            <span className={`slot-chip ${active ? "active" : ""}`}>{active ? "ACTIVE" : "IDLE"}</span>
+                            <Button name={"Copy"} onPress={handleCopySlot(idx)} />
+                            <Button name={"Paste"} disabled={!slotClipboard} onPress={handlePasteSlot(idx)} />
+                          </div>
                         </div>
                         <div className="form">
                           <label className="w">MAC</label>
@@ -1011,7 +1144,7 @@ function App() {
                         </div>
                         <div className="form">
                           <label className="w">Operator</label>
-                          <input type="input" value={slot.operator || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "operator")} />
+                          <input type="input" disabled={idx > 0 && sharedLocks.operator} value={slot.operator || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "operator")} />
                         </div>
                         <div className="form">
                           <label className="w">Self ID</label>
@@ -1019,18 +1152,19 @@ function App() {
                         </div>
                         <div className="form">
                           <label className="w">Manufacturer</label>
-                          <input type="input" value={slot.manufacturer || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "manufacturer")} />
+                          <input type="input" disabled={idx > 0 && sharedLocks.manufacturer} value={slot.manufacturer || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "manufacturer")} />
                         </div>
                         <div className="form">
                           <label className="w">Model</label>
-                          <input type="input" value={slot.model || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "model")} />
+                          <input type="input" disabled={idx > 0 && sharedLocks.model} value={slot.model || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "model")} />
                         </div>
                         <div className="form">
-                          <Dropdown items={uatype_t} selected={slot.uatype || 2} label="UA Type" onChange={handleSlotData(idx, "uatype")} />
+                          <Dropdown items={uatype_t} selected={slot.uatype || 2} label="UA Type" disabled={idx > 0 && sharedLocks.uatype} onChange={handleSlotData(idx, "uatype")} />
                         </div>
                         <div className="form">
-                          <Dropdown items={idtype_t} selected={slot.idtype || 1} label="ID Type" onChange={handleSlotData(idx, "idtype")} />
+                          <Dropdown items={idtype_t} selected={slot.idtype || 1} label="ID Type" disabled={idx > 0 && sharedLocks.idtype} onChange={handleSlotData(idx, "idtype")} />
                         </div>
+                        {errors.length ? <div className="slot-errors">{errors.map((message, errorIdx) => <div key={errorIdx}>{message}</div>)}</div> : null}
                       </div>
                     );
                   })}

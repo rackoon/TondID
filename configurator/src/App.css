@@ -412,6 +412,14 @@ hr {
   margin-bottom: 14px;
 }
 
+.slot-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .slot-chip {
   display: inline-flex;
   align-items: center;
@@ -429,6 +437,24 @@ hr {
 .slot-chip.active {
   background: rgba(134, 215, 196, 0.16);
   color: #86d7c4;
+}
+
+.slot-locks .app-button {
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.slot-errors {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 92, 122, 0.08);
+  border: 1px solid rgba(255, 92, 122, 0.18);
+  color: #ffb4c3;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .form,
@@ -456,6 +482,13 @@ input[type="input"]:focus,
 .field-select:focus {
   border-color: rgba(173, 198, 255, 0.56);
   box-shadow: 0 0 0 4px rgba(173, 198, 255, 0.16);
+}
+
+input[type="input"]:disabled,
+.field-select:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .field-select {

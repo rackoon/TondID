@@ -1,4 +1,4 @@
-export const Dropdown = ({ label, items, selected, value, onChange, invert = false }) => {
+export const Dropdown = ({ label, items, selected, value, onChange, invert = false, disabled = false }) => {
 
     const handleChange = (v) => {
         onChange(v.nativeEvent);
@@ -11,6 +11,7 @@ export const Dropdown = ({ label, items, selected, value, onChange, invert = fal
                 className="field-select"
                 value={selected}
                 defaultValue={selected}
+                disabled={disabled}
                 onChange={handleChange}
             >
                 {Object.keys(items).map(key =>
