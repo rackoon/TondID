@@ -298,6 +298,7 @@ input[type="input"],
   overflow-y: auto;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   padding: 24px;
   background: rgba(4, 6, 10, 0.72);
   backdrop-filter: blur(16px);
