@@ -6,6 +6,7 @@
 #define MAX_PUBLIC_KEYS 5
 #define PUBLIC_KEY_LEN 32
 #define PARAM_NAME_MAX_LEN 16
+#define MOCK_SLOT_COUNT 5
 
 #define PARAM_FLAG_NONE 0
 #define PARAM_FLAG_PASSWORD (1U<<0)
@@ -58,6 +59,14 @@ public:
     uint8_t mock_app_mode = 1;
     uint8_t mock_fly_mode = 0;
     uint8_t mock_path_mode = 0;
+    char mock_slot_mac[MOCK_SLOT_COUNT][21] = {};
+    char mock_slot_uas_id[MOCK_SLOT_COUNT][21] = {};
+    char mock_slot_operator_id[MOCK_SLOT_COUNT][21] = {};
+    char mock_slot_self_id[MOCK_SLOT_COUNT][21] = {};
+    char mock_slot_manufacturer[MOCK_SLOT_COUNT][21] = {};
+    char mock_slot_model[MOCK_SLOT_COUNT][21] = {};
+    uint8_t mock_slot_ua_type[MOCK_SLOT_COUNT] = {};
+    uint8_t mock_slot_id_type[MOCK_SLOT_COUNT] = {};
     struct {
         char b64_key[64];
     } public_keys[MAX_PUBLIC_KEYS];

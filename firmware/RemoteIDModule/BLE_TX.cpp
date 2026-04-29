@@ -121,6 +121,7 @@ bool BLE_TX::init(void)
     advert.setAdvertisingParams(1, &ext_adv_params_coded);
     advert.setDuration(1);
     advert.setInstanceAddress(1, mac_addr);
+    memcpy(active_mac, mac_addr, sizeof(active_mac));
 
     // prefer S8 coding
     if (esp_ble_gap_set_prefered_default_phy(ESP_BLE_GAP_PHY_OPTIONS_PREF_S8_CODING, ESP_BLE_GAP_PHY_OPTIONS_PREF_S8_CODING) != ESP_OK) {
@@ -131,6 +132,30 @@ bool BLE_TX::init(void)
     advert_instances[0] = 0;
     advert_instances[1] = 1;
     started = false;
+    return true;
+}
+
+bool BLE_TX::set_active_mac(const uint8_t mac[6])
+{
+    init();
+    if (memcmp(active_mac, mac, sizeof(active_mac)) == 0) {
+        return true;
+    }
+
+    const bool was_started = started;
+    if (started) {
+        advert.stop(2, advert_instances);
+        started = false;
+    }
+
+    advert.setInstanceAddress(0, const_cast<uint8_t*>(mac));
+    advert.setInstanceAddress(1, const_cast<uint8_t*>(mac));
+    memcpy(active_mac, mac, sizeof(active_mac));
+
+    if (was_started) {
+        advert.start();
+        started = true;
+    }
     return true;
 }
 

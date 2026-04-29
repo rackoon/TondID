@@ -8,6 +8,7 @@
 class WiFi_TX : public Transmitter {
 public:
     bool init(void) override;
+    bool set_active_mac(const uint8_t mac[6]);
     bool transmit_nan(ODID_UAS_Data &UAS_data);
     bool transmit_beacon(ODID_UAS_Data &UAS_data);
     bool stop(void);

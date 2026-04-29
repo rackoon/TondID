@@ -45,6 +45,13 @@ bool WiFi_TX::init(void)
     return true;
 }
 
+bool WiFi_TX::set_active_mac(const uint8_t mac[6])
+{
+    init();
+    memcpy(WiFi_mac_addr, mac, sizeof(WiFi_mac_addr));
+    return true;
+}
+
 bool WiFi_TX::transmit_nan(ODID_UAS_Data &UAS_data)
 {
     init();

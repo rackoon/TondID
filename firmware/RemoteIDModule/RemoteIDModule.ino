@@ -292,6 +292,63 @@ static uint8_t mock_slot_count(void)
     return total > MOCK_UAS_LIMIT ? MOCK_UAS_LIMIT : total;
 }
 
+static void default_slot_mac(uint8_t slot, uint8_t mac[6])
+{
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    mac[0] |= 0x02;
+    mac[0] &= 0xFE;
+    mac[5] = uint8_t(mac[5] + slot);
+}
+
+static bool parse_mac_string(const char *s, uint8_t mac[6])
+{
+    if (s == nullptr || strlen(s) < 17) {
+        return false;
+    }
+    unsigned int bytes[6] {};
+    if (sscanf(s, "%02x:%02x:%02x:%02x:%02x:%02x",
+               &bytes[0], &bytes[1], &bytes[2], &bytes[3], &bytes[4], &bytes[5]) != 6) {
+        return false;
+    }
+    for (uint8_t i = 0; i < 6; i++) {
+        mac[i] = uint8_t(bytes[i] & 0xFF);
+    }
+    mac[0] |= 0x02;
+    mac[0] &= 0xFE;
+    return true;
+}
+
+static void format_mac_string(const uint8_t mac[6], char mac_out[18])
+{
+    snprintf(mac_out, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+static void get_slot_mac(uint8_t slot, uint8_t mac[6])
+{
+    if (slot < MOCK_SLOT_COUNT && parse_mac_string(g.mock_slot_mac[slot], mac)) {
+        return;
+    }
+    default_slot_mac(slot, mac);
+}
+
+static const char *slot_or_default(const char *slot_value, const char *fallback)
+{
+    return (slot_value != nullptr && slot_value[0] != 0) ? slot_value : fallback;
+}
+
+static uint8_t slot_ua_type(uint8_t slot, uint8_t fallback)
+{
+    const uint8_t configured = slot < MOCK_SLOT_COUNT ? g.mock_slot_ua_type[slot] : 0;
+    return configured > 0 ? configured : fallback;
+}
+
+static uint8_t slot_id_type(uint8_t slot, uint8_t fallback)
+{
+    const uint8_t configured = slot < MOCK_SLOT_COUNT ? g.mock_slot_id_type[slot] : 0;
+    return configured > 0 ? configured : fallback;
+}
+
 static float mock_slot_hold_ms(void)
 {
     float max_rate = 0.0f;
@@ -320,6 +377,10 @@ static float mock_slot_hold_ms(void)
 static void make_mock_uas_id(uint8_t slot, char uas_id[ODID_ID_SIZE+1])
 {
     memset(uas_id, 0, ODID_ID_SIZE + 1);
+    if (slot < MOCK_SLOT_COUNT && strlen(g.mock_slot_uas_id[slot]) > 0) {
+        snprintf(uas_id, ODID_ID_SIZE + 1, "%s", g.mock_slot_uas_id[slot]);
+        return;
+    }
     const char *base = strlen(g.uas_id) > 0 ? g.uas_id : MOCK_UAS_ID;
     if (slot == 0) {
         snprintf(uas_id, ODID_ID_SIZE + 1, "%s", base);
@@ -353,6 +414,10 @@ static void make_mock_uas_id(uint8_t slot, char uas_id[ODID_ID_SIZE+1])
 static void make_mock_self_id(uint8_t slot, char self_id[ODID_STR_SIZE+1])
 {
     memset(self_id, 0, ODID_STR_SIZE + 1);
+    if (slot < MOCK_SLOT_COUNT && strlen(g.mock_slot_self_id[slot]) > 0) {
+        snprintf(self_id, ODID_STR_SIZE + 1, "%s", g.mock_slot_self_id[slot]);
+        return;
+    }
     const char *base = strlen(g.mock_self_id) > 0 ? g.mock_self_id : MOCK_SELF_ID;
     if (slot == 0) {
         snprintf(self_id, ODID_STR_SIZE + 1, "%s", base);
@@ -372,8 +437,8 @@ static void fill_mock_uas_data(uint8_t slot, uint8_t slot_count)
     make_mock_uas_id(slot, uas_id);
     make_mock_self_id(slot, self_id);
 
-    const ODID_uatype_t ua_type = g.ua_type > 0 ? (ODID_uatype_t)g.ua_type : ODID_UATYPE_HELICOPTER_OR_MULTIROTOR;
-    const ODID_idtype_t id_type = g.id_type > 0 ? (ODID_idtype_t)g.id_type : ODID_IDTYPE_SERIAL_NUMBER;
+    const ODID_uatype_t ua_type = (ODID_uatype_t)slot_ua_type(slot, g.ua_type > 0 ? g.ua_type : ODID_UATYPE_HELICOPTER_OR_MULTIROTOR);
+    const ODID_idtype_t id_type = (ODID_idtype_t)slot_id_type(slot, g.id_type > 0 ? g.id_type : ODID_IDTYPE_SERIAL_NUMBER);
 
     UAS_data.BasicID[0].UAType = ua_type;
     UAS_data.BasicID[0].IDType = id_type;
@@ -385,7 +450,7 @@ static void fill_mock_uas_data(uint8_t slot, uint8_t slot_count)
     UAS_data.SelfIDValid = 1;
 
     UAS_data.OperatorID.OperatorIdType = ODID_OPERATOR_ID;
-    ODID_COPY_STR(UAS_data.OperatorID.OperatorId, g.mock_operator_id);
+    ODID_COPY_STR(UAS_data.OperatorID.OperatorId, slot_or_default(g.mock_slot_operator_id[slot], g.mock_operator_id));
     UAS_data.OperatorIDValid = 1;
 
     const float orbit_radius = g.mock_ring_radius > 10.0f ? g.mock_ring_radius : 120.0f;
@@ -556,11 +621,8 @@ static uint8_t serial_mock_slots(void)
 static void serial_make_mac(uint8_t slot, char mac_out[18])
 {
     uint8_t mac[6] {};
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    mac[0] |= 0x02;
-    mac[5] = uint8_t(mac[5] + slot);
-    snprintf(mac_out, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    get_slot_mac(slot, mac);
+    format_mac_string(mac, mac_out);
 }
 
 static Print &serial_out(void)
@@ -677,6 +739,33 @@ static void serial_send_data(void)
                   int(g.mock_altitude_mode));
 }
 
+static void serial_send_slot(uint8_t slot)
+{
+    if (slot >= MOCK_SLOT_COUNT) {
+        serial_printf("$-\r\n");
+        return;
+    }
+    char mac[18] {};
+    serial_make_mac(slot, mac);
+    char uas_id[ODID_ID_SIZE+1] {};
+    char self_id[ODID_STR_SIZE+1] {};
+    make_mock_uas_id(slot, uas_id);
+    make_mock_self_id(slot, self_id);
+    const char *op = slot_or_default(g.mock_slot_operator_id[slot], g.mock_operator_id);
+    const char *mfr = slot_or_default(g.mock_slot_manufacturer[slot], g.mock_manufacturer);
+    const char *model = slot_or_default(g.mock_slot_model[slot], g.mock_model);
+    serial_printf("$G|%u|%s|%s|%s|%s|%s|%s|%u|%u\r\n",
+                  unsigned(slot),
+                  mac,
+                  uas_id,
+                  op,
+                  self_id,
+                  mfr,
+                  model,
+                  unsigned(slot_ua_type(slot, g.ua_type)),
+                  unsigned(slot_id_type(slot, g.id_type)));
+}
+
 static void serial_push_status(void)
 {
     const uint32_t now_ms = millis();
@@ -739,11 +828,56 @@ static void serial_apply_data(const std::vector<String> &fields)
     if (fields.size() > 32) {
         g.set_by_name_uint8("MOCK_ALT_MODE", uint8_t(fields[32].toInt()));
     }
+    g.set_by_name_string("S0_UAS", fields[0].c_str());
+    g.set_by_name_string("S0_OP", fields[1].c_str());
+    g.set_by_name_string("S0_SELF", fields[2].c_str());
+    g.set_by_name_uint8("S0_UAT", uint8_t(fields[3].toInt()));
+    g.set_by_name_uint8("S0_IDT", uint8_t(fields[4].toInt()));
+    if (fields.size() > 27) {
+        g.set_by_name_string("S0_MFR", fields[27].c_str());
+    }
+    if (fields.size() > 28) {
+        g.set_by_name_string("S0_MODEL", fields[28].c_str());
+    }
     g.set_by_name_uint8("MOCK_ENABLE", 1);
     paused_status_valid = false;
     serial_send_ok();
     serial_send_data();
     serial_send_current();
+}
+
+static void serial_apply_slot(const std::vector<String> &fields)
+{
+    if (fields.size() < 9) {
+        return;
+    }
+    const uint8_t slot = uint8_t(fields[0].toInt());
+    if (slot >= MOCK_SLOT_COUNT) {
+        serial_printf("$-\r\n");
+        return;
+    }
+
+    const String idx = String(slot);
+    g.set_by_name_string(("S" + idx + "_MAC").c_str(), fields[1].c_str());
+    g.set_by_name_string(("S" + idx + "_UAS").c_str(), fields[2].c_str());
+    g.set_by_name_string(("S" + idx + "_OP").c_str(), fields[3].c_str());
+    g.set_by_name_string(("S" + idx + "_SELF").c_str(), fields[4].c_str());
+    g.set_by_name_string(("S" + idx + "_MFR").c_str(), fields[5].c_str());
+    g.set_by_name_string(("S" + idx + "_MODEL").c_str(), fields[6].c_str());
+    g.set_by_name_uint8(("S" + idx + "_UAT").c_str(), uint8_t(fields[7].toInt()));
+    g.set_by_name_uint8(("S" + idx + "_IDT").c_str(), uint8_t(fields[8].toInt()));
+
+    if (slot == 0) {
+        g.set_by_name_string("UAS_ID", fields[2].c_str());
+        g.set_by_name_string("MOCK_OP_ID", fields[3].c_str());
+        g.set_by_name_string("MOCK_SELF_ID", fields[4].c_str());
+        g.set_by_name_string("MOCK_MFR", fields[5].c_str());
+        g.set_by_name_string("MOCK_MODEL", fields[6].c_str());
+        g.set_by_name_uint8("UAS_TYPE", uint8_t(fields[7].toInt()));
+        g.set_by_name_uint8("UAS_ID_TYPE", uint8_t(fields[8].toInt()));
+    }
+    serial_send_ok();
+    serial_send_slot(slot);
 }
 
 static void serial_apply_mode(const std::vector<String> &fields)
@@ -825,6 +959,12 @@ static void process_serial_command(String line)
         serial_send_current();
     } else if (command == "$SD") {
         serial_apply_data(fields);
+    } else if (command == "$GS") {
+        if (fields.size() > 0) {
+            serial_send_slot(uint8_t(fields[0].toInt()));
+        }
+    } else if (command == "$SS") {
+        serial_apply_slot(fields);
     } else if (command == "$SM") {
         serial_apply_mode(fields);
     } else if (command == "$R") {
@@ -1065,6 +1205,10 @@ void loop()
         mock_rid_slots = mock_slot_count();
         mock_rid_slot = (millis() / uint32_t(mock_slot_hold_ms())) % mock_rid_slots;
         fill_mock_uas_data(mock_rid_slot, mock_rid_slots);
+        uint8_t slot_mac[6] {};
+        get_slot_mac(mock_rid_slot, slot_mac);
+        ble.set_active_mac(slot_mac);
+        wifi.set_active_mac(slot_mac);
         status_reason = "mock rid " + String(unsigned(mock_rid_slot + 1)) + "/" + String(unsigned(mock_rid_slots));
     } else {
         mock_rid_slot = 0;

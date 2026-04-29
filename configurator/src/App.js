@@ -153,6 +153,8 @@ const Commands = {
   reboot: "R",
   current: "C",
   store_data: "SD",
+  get_slot_data: "GS",
+  store_slot_data: "SS",
   store_mode: "SM",
   path: "P",
 }
@@ -197,6 +199,7 @@ const InitialPosition = { lat: 59.437, lng: 24.7536, op_lat: 59.437, op_lng: 24.
 const MaxTotalUas = 5;
 const MaxGhostUas = MaxTotalUas - 1;
 const InitialPest = { pe_lat: 59.437, pe_lng: 24.7536, pe_radius: MinRadius, pe_spawn: MaxTotalUas, ghost_id_scheme: 0, ghost_id_prefix: "1596GHOSTPREFIX000", ghost_flight_mode: 2, ghost_altitude_mode: 1 };
+const InitialSlot = { mac: "", rid: "", operator: "", description: "", manufacturer: "", model: "", uatype: 2, idtype: 1 };
 
 
 const Button = ({ name, secondary, selected, disabled, onPress }) => {
@@ -234,6 +237,30 @@ const I = (n) => Number(parseInt(n) || 0);
 const S = (s) => ((s || s === 0) && s.length ? s : " ").toUpperCase();
 const hasZeroOrigin = (p) => F(p.lat) === 0 && F(p.lng) === 0;
 const randomHex = (len) => Array.from({ length: len }, () => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join("");
+const padHex = (n) => n.toString(16).toUpperCase().padStart(2, "0");
+const normalizeMac = (value = "") => value.toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 12).match(/.{1,2}/g)?.join(":") || "";
+const defaultMacForSlot = (base, slot) => {
+  const clean = (base || "").replace(/[^0-9A-F]/gi, "").toUpperCase();
+  if (clean.length !== 12) {
+    return "";
+  }
+  const parts = clean.match(/.{1,2}/g).map(part => parseInt(part, 16));
+  parts[0] = (parts[0] | 0x02) & 0xFE;
+  parts[5] = (parts[5] + slot) & 0xFF;
+  return parts.map(padHex).join(":");
+};
+const makePrimarySlot = (state, baseMac = "") => ({
+  ...InitialSlot,
+  mac: normalizeMac(state.mac || baseMac),
+  rid: state.rid || "",
+  operator: state.operator || "",
+  description: state.description || "",
+  manufacturer: state.manufacturer || "",
+  model: state.model || "",
+  uatype: I(state.uatype) || 2,
+  idtype: I(state.idtype) || 1,
+});
+const emptySlotList = () => Array.from({ length: MaxTotalUas }, (_, idx) => ({ ...InitialSlot, index: idx }));
 
 
 const LocationMarker = ({ onEvent }) => {
@@ -256,6 +283,7 @@ function App() {
   const [position, setPosition] = useState(InitialPosition);
   const [pest, setPest] = useState({});
   const [data, setData] = useState(InitialPest);
+  const [slots, setSlots] = useState(emptySlotList());
   const [dataUpdated, setDataUpdated] = useState(false);
   const [map, setMap] = useState(null)
   const [mapMode, setMapMode] = useState(MapMode.Pan);
@@ -305,6 +333,7 @@ function App() {
     } else {
       serialCommand(Commands.data);
       serialCommand(Commands.current);
+      requestSlotSync();
     }
   }
 
@@ -320,6 +349,7 @@ function App() {
       serial.connect().then(() => {
         setPest({});
         setTrail([]);
+        setSlots(emptySlotList());
         setDebug({
           lastLine: "",
           lastType: "",
@@ -347,6 +377,63 @@ function App() {
     setData({ ...data, pe_spawn: ghosts + 1 });
   }
 
+  const requestSlotSync = () => {
+    for (let slot = 0; slot < MaxTotalUas; slot++) {
+      serialCommand(Commands.get_slot_data, [slot]);
+    }
+  };
+
+  const handleSlotData = (slotIndex, key) => event => {
+    const value = key === "mac" ? normalizeMac(event.target.value) : event.target.value;
+    setDataUpdated(true);
+    setSlots(prev => prev.map((slot, idx) => idx === slotIndex ? { ...slot, [key]: value } : slot));
+  };
+
+  const handleClonePrimaryToSlots = () => {
+    const primary = makePrimarySlot(data, data.mac);
+    setDataUpdated(true);
+    setSlots(prev => prev.map((slot, idx) => ({
+      ...slot,
+      mac: idx === 0 ? primary.mac : defaultMacForSlot(primary.mac || data.mac || "", idx),
+      rid: idx === 0 ? primary.rid : `${primary.rid.slice(0, 17)}${String(idx).padStart(3, "0")}`.slice(0, 20),
+      operator: primary.operator,
+      description: idx === 0 ? primary.description : `${primary.description.slice(0, 17)} G${idx}`.slice(0, 20),
+      manufacturer: primary.manufacturer,
+      model: primary.model,
+      uatype: primary.uatype,
+      idtype: primary.idtype,
+    })));
+  };
+
+  const handleAutoMacs = () => {
+    const baseMac = normalizeMac(slots[0]?.mac || data.mac || "");
+    setDataUpdated(true);
+    setSlots(prev => prev.map((slot, idx) => ({
+      ...slot,
+      mac: defaultMacForSlot(baseMac, idx),
+    })));
+  };
+
+  const handleRandomizeSlots = () => {
+    const profiles = ["GUARD", "TRACK", "WATCH", "GRID", "SHIELD"];
+    setDataUpdated(true);
+    setSlots(prev => prev.map((slot, idx) => {
+      const rid = `1596${randomHex(13)}`.slice(0, 20);
+      const label = profiles[idx % profiles.length];
+      return {
+        ...slot,
+        mac: defaultMacForSlot(slot.mac || data.mac || "", idx) || slot.mac,
+        rid,
+        operator: `EST${randomHex(12)}`.slice(0, 20),
+        description: `${label} ${idx}`.slice(0, 20),
+        manufacturer: idx === 0 ? (data.manufacturer || "TONDID") : `TONDID`,
+        model: idx === 0 ? (data.model || "NODE-0") : `NODE-${idx}`,
+        uatype: slot.uatype || 2,
+        idtype: slot.idtype || 1,
+      };
+    }));
+  };
+
   const handleRandomizeProfile = () => {
     const profiles = [
       { uatype: 2, description: "QUAD TEST" },
@@ -369,6 +456,17 @@ function App() {
       model: profile.description.replace(" TEST", ""),
       ghost_id_prefix: rid.slice(0, 17),
     });
+    setSlots(prev => prev.map((slot, idx) => idx === 0 ? {
+      ...slot,
+      mac: normalizeMac(data.mac || slot.mac),
+      rid,
+      operator,
+      description: profile.description,
+      manufacturer: "ARUPILOT",
+      model: profile.description.replace(" TEST", ""),
+      uatype: profile.uatype,
+      idtype: 1,
+    } : slot));
   }
 
   const handleUseIpHome = () => {
@@ -395,6 +493,25 @@ function App() {
       ...o,
       appMode: o.appMode ?? modeRef.current.appMode,
     };
+    const primarySlot = makePrimarySlot(dt, dt.mac);
+    const slotPayload = emptySlotList().map((slot, idx) => {
+      const current = slots[idx] || slot;
+      if (idx === 0) {
+        return { ...current, ...primarySlot };
+      }
+      return {
+        ...InitialSlot,
+        ...current,
+        mac: normalizeMac(current.mac || defaultMacForSlot(primarySlot.mac || dt.mac || "", idx)),
+        rid: current.rid || "",
+        operator: current.operator || dt.operator || "",
+        description: current.description || `${dt.description || "GHOST"} G${idx}`.slice(0, 20),
+        manufacturer: current.manufacturer || dt.manufacturer || "",
+        model: current.model || dt.model || "",
+        uatype: I(current.uatype) || I(dt.uatype) || 2,
+        idtype: I(current.idtype) || I(dt.idtype) || 1,
+      };
+    });
     serialCommand(Commands.store_data, [
       // Defaults
       S(dt.rid), S(dt.operator), S(dt.description), dt.uatype, dt.idtype, dt.lat, dt.lng, dt.alt, dt.op_lat, dt.op_lng, dt.op_alt, dt.spd, dt.sats, dt.mac, dt.appMode, dt.pe_lat, dt.pe_lng, dt.pe_radius, dt.pe_spawn,
@@ -402,8 +519,21 @@ function App() {
       dt.ext_mode || 0, dt.ext_baud || 0, dt.ext_rx_pin || 0, dt.ext_tx_pin || 0, dt.ext_shift_mode || 0, dt.ext_shift_radius || 0, dt.ext_shift_min || 0, dt.ext_shift_max || 0,
       S(dt.manufacturer || ""), S(dt.model || ""), dt.ghost_id_scheme || 0, S(dt.ghost_id_prefix || ""), dt.ghost_flight_mode || 0, dt.ghost_altitude_mode || 0
     ]);
+    slotPayload.forEach((slot, idx) => serialCommand(Commands.store_slot_data, [
+      idx,
+      S(slot.mac || ""),
+      S(slot.rid || ""),
+      S(slot.operator || ""),
+      S(slot.description || ""),
+      S(slot.manufacturer || ""),
+      S(slot.model || ""),
+      slot.uatype || 2,
+      slot.idtype || 1,
+    ]));
+    setSlots(slotPayload);
     serialCommand(Commands.data);
     serialCommand(Commands.current);
+    requestSlotSync();
   }
 
   const handleModeUpdate = (o = {}) => {
@@ -557,6 +687,22 @@ function App() {
         });
         setFlyMode(I(p[12]));
         setDebug(prev => ({ ...prev, deviceAppMode: AppMode.Pest, deviceFlyMode: I(p[12]) }));
+      }
+      if (c === "G") {
+        const slotIndex = I(p[1]);
+        if (slotIndex >= 0 && slotIndex < MaxTotalUas) {
+          setSlots(prev => prev.map((slot, idx) => idx === slotIndex ? {
+            ...slot,
+            mac: p[2] || "",
+            rid: p[3] || "",
+            operator: p[4] || "",
+            description: p[5] || "",
+            manufacturer: p[6] || "",
+            model: p[7] || "",
+            uatype: I(p[8]) || 2,
+            idtype: I(p[9]) || 1,
+          } : slot));
+        }
       }
       if (c === "D") {
         if (editStateRef.current.showProfile && editStateRef.current.dataUpdated) {
@@ -836,6 +982,59 @@ function App() {
                     <input type="input" value={data[ref[1]] || ""} size="24" maxLength="24" onChange={handleData(ref[1])} />
                   </div>
                 )}
+              </div>
+
+              <div className="setting section-span-full">
+                <h3>Swarm Slots</h3>
+                <div className="controls wrap">
+                  <Button onPress={handleClonePrimaryToSlots} secondary name={"Clone Primary To All"} />
+                  <Button onPress={handleAutoMacs} name={"Auto MACs"} />
+                  <Button onPress={handleRandomizeSlots} name={"Randomize Slots"} />
+                </div>
+                <div className="slot-grid">
+                  {slots.map((slot, idx) => {
+                    const activeSlots = Math.min(MaxTotalUas, I(data.pe_spawn) || 1);
+                    const active = idx < activeSlots;
+                    return (
+                      <div className="slot-card" key={idx}>
+                        <div className="slot-card-header">
+                          <strong>Slot {idx + 1}</strong>
+                          <span className={`slot-chip ${active ? "active" : ""}`}>{active ? "ACTIVE" : "IDLE"}</span>
+                        </div>
+                        <div className="form">
+                          <label className="w">MAC</label>
+                          <input type="input" value={slot.mac || ""} size="24" maxLength="17" onChange={handleSlotData(idx, "mac")} />
+                        </div>
+                        <div className="form">
+                          <label className="w">UAS ID</label>
+                          <input type="input" value={slot.rid || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "rid")} />
+                        </div>
+                        <div className="form">
+                          <label className="w">Operator</label>
+                          <input type="input" value={slot.operator || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "operator")} />
+                        </div>
+                        <div className="form">
+                          <label className="w">Self ID</label>
+                          <input type="input" value={slot.description || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "description")} />
+                        </div>
+                        <div className="form">
+                          <label className="w">Manufacturer</label>
+                          <input type="input" value={slot.manufacturer || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "manufacturer")} />
+                        </div>
+                        <div className="form">
+                          <label className="w">Model</label>
+                          <input type="input" value={slot.model || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "model")} />
+                        </div>
+                        <div className="form">
+                          <Dropdown items={uatype_t} selected={slot.uatype || 2} label="UA Type" onChange={handleSlotData(idx, "uatype")} />
+                        </div>
+                        <div className="form">
+                          <Dropdown items={idtype_t} selected={slot.idtype || 1} label="ID Type" onChange={handleSlotData(idx, "idtype")} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="setting section-span-full">

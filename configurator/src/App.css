@@ -387,6 +387,50 @@ hr {
   grid-column: 1 / -1;
 }
 
+.controls.wrap {
+  margin-bottom: 18px;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.slot-card {
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.slot-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.slot-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--md-sys-color-on-surface-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.slot-chip.active {
+  background: rgba(134, 215, 196, 0.16);
+  color: #86d7c4;
+}
+
 .form,
 .dropdown-field {
   display: grid;
@@ -569,6 +613,10 @@ input[type="input"]:focus,
   .settings-grid {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .slot-grid {
+    grid-template-columns: 1fr;
   }
 
   .sl,

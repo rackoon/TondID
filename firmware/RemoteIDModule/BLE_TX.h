@@ -8,6 +8,7 @@
 class BLE_TX : public Transmitter {
 public:
     bool init(void) override;
+    bool set_active_mac(const uint8_t mac[6]);
     bool transmit_longrange(ODID_UAS_Data &UAS_data);
     bool transmit_legacy(ODID_UAS_Data &UAS_data);
     bool stop(void);
@@ -19,6 +20,7 @@ private:
     uint8_t longrange_payload[250];
     bool started;
     uint8_t advert_instances[2];
+    uint8_t active_mac[6];
 
     uint8_t dBm_to_tx_power(float dBm) const;
 };
