@@ -250,6 +250,11 @@ const padHex = (n) => n.toString(16).toUpperCase().padStart(2, "0");
 const normalizeMac = (value = "") => value.toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 12).match(/.{1,2}/g)?.join(":") || "";
 const isValidMac = (value = "") => /^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/.test((value || "").toUpperCase());
 const isValidRid = (value = "") => /^[A-Z0-9._ -]{1,20}$/.test((value || "").toUpperCase());
+const randomLocalMac = () => {
+  const parts = Array.from({ length: 6 }, () => Math.floor(Math.random() * 256));
+  parts[0] = (parts[0] | 0x02) & 0xFE;
+  return parts.map(padHex).join(":");
+};
 const defaultMacForSlot = (base, slot) => {
   const clean = (base || "").replace(/[^0-9A-F]/gi, "").toUpperCase();
   if (clean.length !== 12) {
@@ -458,11 +463,12 @@ function App() {
   };
 
   const handleAutoMacs = () => {
-    const baseMac = normalizeMac(slots[0]?.mac || data.mac || "");
+    const baseMac = normalizeMac(slots[0]?.mac || data.mac || randomLocalMac());
     setDataUpdated(true);
+    setData({ ...data, mac: baseMac });
     setSlots(prev => prev.map((slot, idx) => ({
       ...slot,
-      mac: defaultMacForSlot(baseMac, idx),
+      mac: idx === 0 ? baseMac : defaultMacForSlot(baseMac, idx),
     })));
   };
 
@@ -1057,16 +1063,12 @@ function App() {
                   <Button onPress={handleRandomizeProfile} secondary name={"Randomize"} />
                   <Button onPress={handleUseIpHome} name={"Use IP Home"} />
                 </div>
-                <div className="form">
-                  <Dropdown items={idtype_t} selected={data.idtype} label="ID Type" onChange={handleData("idtype")} />
-                </div>
+                <Dropdown items={idtype_t} selected={data.idtype} label="ID Type" onChange={handleData("idtype")} />
                 <div className="form">
                   <label className="w">Remote ID</label>
                   <input type="input" value={data.rid} onChange={handleData("rid")} size="24" maxLength="24" />
                 </div>
-                <div className="form">
-                  <Dropdown items={uatype_t} selected={data.uatype} label="UA Type" onChange={handleData("uatype")} />
-                </div>
+                <Dropdown items={uatype_t} selected={data.uatype} label="UA Type" onChange={handleData("uatype")} />
                 {["operator", "description", "manufacturer", "model"].map(key =>
                   <div className="form" key={key}>
                     <label className="w">{key}</label>
@@ -1077,19 +1079,13 @@ function App() {
                   <label className="w">Ghost Drones</label>
                   <input type="input" value={Math.max(0, Math.min(MaxGhostUas, (I(data.pe_spawn) || 1) - 1))} size="24" maxLength="24" onChange={handleGhostCount} />
                 </div>
-                <div className="form">
-                  <Dropdown items={ghost_id_scheme_t} selected={data.ghost_id_scheme || 0} label="Ghost ID Scheme" onChange={handleData("ghost_id_scheme")} />
-                </div>
+                <Dropdown items={ghost_id_scheme_t} selected={data.ghost_id_scheme || 0} label="Ghost ID Scheme" onChange={handleData("ghost_id_scheme")} />
                 <div className="form">
                   <label className="w">Ghost ID Prefix</label>
                   <input type="input" value={data.ghost_id_prefix || ""} size="24" maxLength="24" onChange={handleData("ghost_id_prefix")} />
                 </div>
-                <div className="form">
-                  <Dropdown items={ghost_flight_mode_t} selected={data.ghost_flight_mode || 0} label="Ghost Flight Mode" onChange={handleData("ghost_flight_mode")} />
-                </div>
-                <div className="form">
-                  <Dropdown items={ghost_altitude_mode_t} selected={data.ghost_altitude_mode || 0} label="Ghost Altitude Mode" onChange={handleData("ghost_altitude_mode")} />
-                </div>
+                <Dropdown items={ghost_flight_mode_t} selected={data.ghost_flight_mode || 0} label="Ghost Flight Mode" onChange={handleData("ghost_flight_mode")} />
+                <Dropdown items={ghost_altitude_mode_t} selected={data.ghost_altitude_mode || 0} label="Ghost Altitude Mode" onChange={handleData("ghost_altitude_mode")} />
               </div>
 
               <div className="setting">
@@ -1158,12 +1154,8 @@ function App() {
                           <label className="w">Model</label>
                           <input type="input" disabled={idx > 0 && sharedLocks.model} value={slot.model || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "model")} />
                         </div>
-                        <div className="form">
-                          <Dropdown items={uatype_t} selected={slot.uatype || 2} label="UA Type" disabled={idx > 0 && sharedLocks.uatype} onChange={handleSlotData(idx, "uatype")} />
-                        </div>
-                        <div className="form">
-                          <Dropdown items={idtype_t} selected={slot.idtype || 1} label="ID Type" disabled={idx > 0 && sharedLocks.idtype} onChange={handleSlotData(idx, "idtype")} />
-                        </div>
+                        <Dropdown items={uatype_t} selected={slot.uatype || 2} label="UA Type" disabled={idx > 0 && sharedLocks.uatype} onChange={handleSlotData(idx, "uatype")} />
+                        <Dropdown items={idtype_t} selected={slot.idtype || 1} label="ID Type" disabled={idx > 0 && sharedLocks.idtype} onChange={handleSlotData(idx, "idtype")} />
                         {errors.length ? <div className="slot-errors">{errors.map((message, errorIdx) => <div key={errorIdx}>{message}</div>)}</div> : null}
                       </div>
                     );
@@ -1173,9 +1165,7 @@ function App() {
 
               <div className="setting section-span-full">
                 <h3>External</h3>
-                <div className="form">
-                  <Dropdown items={external_t} selected={data.ext_mode} label="Protocol" onChange={handleData("ext_mode")} />
-                </div>
+                <Dropdown items={external_t} selected={data.ext_mode} label="Protocol" onChange={handleData("ext_mode")} />
                 {[["Baud Rate", "ext_baud"], ["RX Pin", "ext_rx_pin"], ["TX Pin", "ext_tx_pin"]].map(ref =>
                   <div className="form" key={ref[1]}>
                     <label className="w">{ref[0]}</label>
