@@ -1033,16 +1033,12 @@ function App() {
         <div className="screen-badge">Remote ID control surface</div>
         <div className="screen-brand">
           <img className="screen-wordmark" src={`${process.env.PUBLIC_URL}/TontID_logo.svg`} alt="TontID logo" />
-          <span className="screen-shortmark">TID</span>
         </div>
-        <div className="screen-subtitle">Modernized local control for the ESP32-based Remote ID mock rig</div>
+        <div className="screen-subtitle">Modernized control for the TondID.</div>
         <div className="action">
           <Button onPress={handleSerialConnect} name={"Connect Device"} />
         </div>
-        <div className="screen-copy">Configure swarm behavior, persist settings to the board, and drive live test broadcasts over WebSerial.</div>
-        <div className="screen-link">
-          <span>`TID` is the compact mark for constrained spaces</span>
-        </div>
+        <div className="screen-copy">Configure TondID settings and drive live test.</div>
         <div className="screen-version">Version 1.0</div>
         {error ? <div id="error"><small>{error}</small></div> : null}
       </div >
