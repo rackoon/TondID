@@ -384,6 +384,41 @@ const makePrimarySlot = (state, baseMac = "", enabled = true) => ({
 const emptySlotList = () => Array.from({ length: MaxTotalUas }, (_, idx) => ({ ...InitialSlot, enabled: idx === 0, index: idx }));
 const emptySlotErrors = () => Array.from({ length: MaxTotalUas }, () => []);
 const countEnabledSlots = (slotList = []) => slotList.filter(slot => slot.enabled).length;
+const wait = (ms) => new Promise(resolve => window.setTimeout(resolve, ms));
+const slotShapeEquals = (desired, actual) => {
+  if (!desired || !actual) {
+    return false;
+  }
+  return (
+    !!desired.enabled === !!actual.enabled &&
+    normalizeMac(desired.mac || "") === normalizeMac(actual.mac || "") &&
+    (desired.rid || "") === (actual.rid || "") &&
+    (desired.operator || "") === (actual.operator || "") &&
+    (desired.description || "") === (actual.description || "") &&
+    (desired.manufacturer || "") === (actual.manufacturer || "") &&
+    (desired.model || "") === (actual.model || "") &&
+    I(desired.uatype) === I(actual.uatype) &&
+    I(desired.idtype) === I(actual.idtype)
+  );
+};
+const buildLabMapping = (slotList = []) => ({
+  schema: "tondid-lab-mapping-v1",
+  generatedAt: new Date().toISOString(),
+  activeSlots: slotList
+    .map((slot, idx) => ({
+      slot: idx + 1,
+      enabled: !!slot.enabled,
+      uasId: slot.rid || "",
+      mac: normalizeMac(slot.mac || ""),
+      operatorId: slot.operator || "",
+      selfId: slot.description || "",
+      labManufacturer: slot.manufacturer || "",
+      labModel: slot.model || "",
+      uaType: I(slot.uatype) || 2,
+      idType: I(slot.idtype) || 1,
+    }))
+    .filter(slot => slot.enabled),
+});
 
 
 const LocationMarker = ({ onEvent }) => {
@@ -428,6 +463,8 @@ function App() {
   const modeRef = useRef({ appMode: AppMode.Squid, flyMode: FlyMode.Pause, pathMode: PathMode.Hold });
   const serialQueueRef = useRef(Promise.resolve());
   const editStateRef = useRef({ showProfile: false, showPath: false, dataUpdated: false });
+  const slotsRef = useRef(emptySlotList());
+  const deviceSlotsRef = useRef(emptySlotList());
   const [debug, setDebug] = useState({
     lastLine: "",
     lastType: "",
@@ -446,8 +483,11 @@ function App() {
       console.log("[serial]", "Writing", cmd);
       serialQueueRef.current = serialQueueRef.current
         .catch(() => undefined)
-        .then(() => serial.write(cmd));
+        .then(() => serial.write(cmd))
+        .then(() => wait(35));
+      return serialQueueRef.current;
     }
+    return Promise.resolve();
   }
 
   const handleSync = (o = true) => {
@@ -466,17 +506,21 @@ function App() {
   const handleSerialConnect = () => {
     setError(false);
     if (connected) {
-      serial.disconnect().then(() => setConnected(false)).catch(e => {
+      serial.disconnect().then(() => {
+        deviceSlotsRef.current = emptySlotList();
+        setConnected(false);
+      }).catch(e => {
         console.log(e);
         setError(e.toString());
         setConnected(false);
       });
     } else {
-      serial.connect().then(() => {
-        setPest({});
-        setTrail([]);
-        setSlots(emptySlotList());
-        setSlotErrors(emptySlotErrors());
+        serial.connect().then(() => {
+          setPest({});
+          setTrail([]);
+          setSlots(emptySlotList());
+          deviceSlotsRef.current = emptySlotList();
+          setSlotErrors(emptySlotErrors());
         setDebug({
           lastLine: "",
           lastType: "",
@@ -514,6 +558,45 @@ function App() {
     for (let slot = 0; slot < MaxTotalUas; slot++) {
       serialCommand(Commands.get_slot_data, [slot]);
     }
+  };
+
+  const writeSlotToDevice = (slot, idx) => serialCommand(Commands.store_slot_data, [
+    idx,
+    slot.enabled ? 1 : 0,
+    S(slot.mac || ""),
+    S(slot.rid || ""),
+    S(slot.operator || ""),
+    S(slot.description || ""),
+    S(slot.manufacturer || ""),
+    S(slot.model || ""),
+    slot.uatype || 2,
+    slot.idtype || 1,
+  ]);
+
+  const verifySlotsOnDevice = async (desiredSlots, attempt = 0) => {
+    const mismatches = desiredSlots
+      .map((slot, idx) => ({ slot, idx, actual: deviceSlotsRef.current[idx] }))
+      .filter(({ slot, actual }) => !slotShapeEquals(slot, actual));
+
+    if (!mismatches.length) {
+      setError(false);
+      return true;
+    }
+
+    if (attempt >= 2) {
+      setError(`Plaat ei kinnitanud kõiki slotte korrektselt. Kontrolli palun Slot ${mismatches.map(({ idx }) => idx + 1).join(", ")}.`);
+      return false;
+    }
+
+    console.log("[serial] slot mismatch, retrying", mismatches);
+    for (const { slot, idx } of mismatches) {
+      await writeSlotToDevice(slot, idx);
+    }
+    await serialCommand(Commands.data);
+    await serialCommand(Commands.current);
+    requestSlotSync();
+    await wait(450);
+    return verifySlotsOnDevice(desiredSlots, attempt + 1);
   };
 
   const syncLockedFields = (slotList) => {
@@ -624,6 +707,36 @@ function App() {
     });
   };
 
+  const handleCopyLabMapping = async () => {
+    try {
+      const payload = JSON.stringify(buildLabMapping(slotsRef.current), null, 2);
+      await navigator.clipboard.writeText(payload);
+      setError(false);
+    } catch (e) {
+      console.log(e);
+      setError("Lab mappingu kopeerimine ebaõnnestus.");
+    }
+  };
+
+  const handleDownloadLabMapping = () => {
+    try {
+      const payload = JSON.stringify(buildLabMapping(slotsRef.current), null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "tondid-lab-mapping.json";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setError(false);
+    } catch (e) {
+      console.log(e);
+      setError("Lab mappingu allalaadimine ebaõnnestus.");
+    }
+  };
+
   const validateSlots = (slotList) => {
     const errorsBySlot = emptySlotErrors();
     const activeMacs = new Map();
@@ -714,7 +827,7 @@ function App() {
     setData({ ...data, ...dd });
   }
 
-  const handleDataUpdate = (o = {}) => {
+  const handleDataUpdate = async (o = {}) => {
     const dt = {
       ...InitialPosition,
       ...InitialPest,
@@ -723,9 +836,10 @@ function App() {
       ...o,
       appMode: o.appMode ?? modeRef.current.appMode,
     };
-    const primarySlot = makePrimarySlot(dt, dt.mac, slots[0]?.enabled ?? true);
+    const sourceSlots = slotsRef.current;
+    const primarySlot = makePrimarySlot(dt, dt.mac, sourceSlots[0]?.enabled ?? true);
     const slotPayload = syncLockedFields(emptySlotList().map((slot, idx) => {
-      const current = slots[idx] || slot;
+      const current = sourceSlots[idx] || slot;
       if (idx === 0) {
         return { ...current, ...primarySlot, enabled: current.enabled ?? primarySlot.enabled };
       }
@@ -751,29 +865,24 @@ function App() {
       return;
     }
     setError(false);
-    serialCommand(Commands.store_data, [
+    await serialCommand(Commands.store_data, [
       // Defaults
       S(dt.rid), S(dt.operator), S(dt.description), dt.uatype, dt.idtype, dt.lat, dt.lng, dt.alt, dt.op_lat, dt.op_lng, dt.op_alt, dt.spd, dt.sats, dt.mac, dt.appMode, dt.pe_lat, dt.pe_lng, dt.pe_radius, totalEnabled,
       // External
       dt.ext_mode || 0, dt.ext_baud || 0, dt.ext_rx_pin || 0, dt.ext_tx_pin || 0, dt.ext_shift_mode || 0, dt.ext_shift_radius || 0, dt.ext_shift_min || 0, dt.ext_shift_max || 0,
       S(dt.manufacturer || ""), S(dt.model || ""), dt.ghost_id_scheme || 0, S(dt.ghost_id_prefix || ""), dt.ghost_flight_mode || 0, dt.ghost_altitude_mode || 0
     ]);
-    slotPayload.forEach((slot, idx) => serialCommand(Commands.store_slot_data, [
-      idx,
-      slot.enabled ? 1 : 0,
-      S(slot.mac || ""),
-      S(slot.rid || ""),
-      S(slot.operator || ""),
-      S(slot.description || ""),
-      S(slot.manufacturer || ""),
-      S(slot.model || ""),
-      slot.uatype || 2,
-      slot.idtype || 1,
-    ]));
+    for (const [idx, slot] of slotPayload.entries()) {
+      await writeSlotToDevice(slot, idx);
+    }
+    slotsRef.current = slotPayload;
     setSlots(slotPayload);
-    serialCommand(Commands.data);
-    serialCommand(Commands.current);
+    deviceSlotsRef.current = emptySlotList();
+    await serialCommand(Commands.data);
+    await serialCommand(Commands.current);
     requestSlotSync();
+    await wait(450);
+    await verifySlotsOnDevice(slotPayload);
   }
 
   const handleModeUpdate = (o = {}) => {
@@ -933,6 +1042,18 @@ function App() {
       if (c === "G") {
         const slotIndex = I(p[1]);
         if (slotIndex >= 0 && slotIndex < MaxTotalUas) {
+          deviceSlotsRef.current = deviceSlotsRef.current.map((slot, idx) => idx === slotIndex ? {
+            ...slot,
+            enabled: I(p[2]) === 1,
+            mac: p[3] || "",
+            rid: p[4] || "",
+            operator: p[5] || "",
+            description: p[6] || "",
+            manufacturer: p[7] || "",
+            model: p[8] || "",
+            uatype: I(p[9]) || 2,
+            idtype: I(p[10]) || 1,
+          } : slot);
           setSlots(prev => prev.map((slot, idx) => idx === slotIndex ? {
             ...slot,
             enabled: I(p[2]) === 1,
@@ -1045,6 +1166,10 @@ function App() {
   useEffect(() => {
     editStateRef.current = { showProfile, showPath, dataUpdated };
   }, [showProfile, showPath, dataUpdated]);
+
+  useEffect(() => {
+    slotsRef.current = slots;
+  }, [slots]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1201,14 +1326,14 @@ function App() {
                   <input type="input" value={data.description} size="24" maxLength="24" onChange={handleData("description")} />
                 </div>
                 <div className="form">
-                  <label className="w">Local Manufacturer</label>
+                  <label className="w">Lab Manufacturer</label>
                   <input type="input" value={data.manufacturer} size="24" maxLength="24" onChange={handleData("manufacturer")} />
                 </div>
                 <div className="form">
-                  <label className="w">Local Model</label>
+                  <label className="w">Lab Model</label>
                   <input type="input" value={data.model} size="24" maxLength="24" onChange={handleData("model")} />
                 </div>
-                <div className="field-note">Local Manufacturer and Local Model are shown in TondID UI only. Most detectors derive vendor from the UAS ID format, not from separate RF fields.</div>
+                <div className="field-note">Lab Manufacturer and Lab Model are for your own detector/dev workflow. Export the lab mapping below if you want your detector to show these values exactly.</div>
               </div>
 
               <div className="setting swarm-card">
@@ -1238,7 +1363,10 @@ function App() {
                   <Button onPress={handleClonePrimaryToSlots} secondary name={"Clone Primary To All"} />
                   <Button onPress={handleAutoMacs} name={"Auto MACs"} />
                   <Button onPress={handleRandomizeSlots} name={"Randomize Slots"} />
+                  <Button onPress={handleCopyLabMapping} name={"Copy Lab Mapping"} />
+                  <Button onPress={handleDownloadLabMapping} name={"Download Lab Mapping"} />
                 </div>
+                <div className="field-note">Lab mapping contains the exact per-slot manufacturer/model labels for your own detector keyed by UAS ID and MAC.</div>
                 <div className="controls wrap slot-locks">
                   {SlotSharedFields.map(field => (
                     <Button
@@ -1280,11 +1408,11 @@ function App() {
                           <input type="input" value={slot.description || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "description")} />
                         </div>
                         <div className="form">
-                          <label className="w">Local Manufacturer</label>
+                          <label className="w">Lab Manufacturer</label>
                           <input type="input" disabled={idx > 0 && sharedLocks.manufacturer} value={slot.manufacturer || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "manufacturer")} />
                         </div>
                         <div className="form">
-                          <label className="w">Local Model</label>
+                          <label className="w">Lab Model</label>
                           <input type="input" disabled={idx > 0 && sharedLocks.model} value={slot.model || ""} size="24" maxLength="20" onChange={handleSlotData(idx, "model")} />
                         </div>
                         <Dropdown items={uatype_t} selected={slot.uatype || 2} label="UA Type" disabled={idx > 0 && sharedLocks.uatype} onChange={handleSlotData(idx, "uatype")} />
