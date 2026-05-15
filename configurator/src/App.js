@@ -1,4 +1,4 @@
-
+﻿
 /**
   _____  ___   __ __  ____  ___    ____   ____  ___
  / ___/ /   \ |  |  ||    ||   \  |    \ |    ||   \
@@ -600,7 +600,7 @@ function App() {
     }
 
     if (attempt >= 2) {
-      setError(`Plaat ei kinnitanud kõiki slotte korrektselt. Kontrolli palun Slot ${mismatches.map(({ idx }) => idx + 1).join(", ")}.`);
+      setError(`Plaat ei kinnitanud kÃµiki slotte korrektselt. Kontrolli palun Slot ${mismatches.map(({ idx }) => idx + 1).join(", ")}.`);
       return false;
     }
 
@@ -730,7 +730,7 @@ function App() {
       setError(false);
     } catch (e) {
       console.log(e);
-      setError("Lab mappingu kopeerimine ebaõnnestus.");
+      setError("Lab mappingu kopeerimine ebaÃµnnestus.");
     }
   };
 
@@ -749,7 +749,7 @@ function App() {
       setError(false);
     } catch (e) {
       console.log(e);
-      setError("Lab mappingu allalaadimine ebaõnnestus.");
+      setError("Lab mappingu allalaadimine ebaÃµnnestus.");
     }
   };
 
@@ -773,7 +773,7 @@ function App() {
       }
 
       if (!rid || !isValidRid(rid)) {
-        errorsBySlot[idx].push("UAS ID peab olema 1-20 märki ja lubab A-Z, 0-9, tühikut, punkti, alakriipsu või sidekriipsu.");
+        errorsBySlot[idx].push("UAS ID peab olema 1-20 mÃ¤rki ja lubab A-Z, 0-9, tÃ¼hikut, punkti, alakriipsu vÃµi sidekriipsu.");
       } else if (activeRids.has(rid)) {
         errorsBySlot[idx].push(`UAS ID kattub slotiga ${activeRids.get(rid) + 1}.`);
       } else {
@@ -786,7 +786,7 @@ function App() {
       }
 
       if (!(slot.operator || "").trim()) {
-        errorsBySlot[idx].push("Operator ei tohi aktiivsel slotil tühi olla.");
+        errorsBySlot[idx].push("Operator ei tohi aktiivsel slotil tÃ¼hi olla.");
       }
     });
     return errorsBySlot;
@@ -1315,7 +1315,7 @@ function App() {
       <div id="screen">
         <div className="screen-badge">Remote ID control surface</div>
         <div className="screen-brand">
-          <img className="screen-wordmark" src={`${process.env.PUBLIC_URL}/TontID_logo.svg`} alt="TontID logo" />
+          <img className="screen-wordmark" src={`${process.env.PUBLIC_URL}/TondID_logo.svg`} alt="TondID logo" />
         </div>
         <div className="screen-subtitle">Modernized control for the TondID.</div>
         <div className="action">
@@ -1665,6 +1665,7 @@ function App() {
 }
 
 export default App;
+
 
 
 

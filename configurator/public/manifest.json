@@ -1,14 +1,14 @@
-{
+﻿{
   "short_name": "TID",
   "name": "TondID Configurator",
   "icons": [
     {
-      "src": "TontID_logo.svg",
+      "src": "TondID_logo.svg",
       "type": "image/svg+xml",
       "sizes": "any"
     },
     {
-      "src": "TontID_logo.svg",
+      "src": "TondID_logo.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"
@@ -19,3 +19,4 @@
   "theme_color": "#10131b",
   "background_color": "#0b0e14"
 }
+
