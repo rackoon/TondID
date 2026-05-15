@@ -1,58 +1,121 @@
-# Building from Sources under linux
+# Building TondID
 
-### Step1: get prerequisites
+This repository carries the TondID configurator, firmware, assets, and supporting material used in the current Windows-based development workflow.
 
- - sudo apt install arduino
- - pip install pymavlink
+## Current local workflow
 
-### Step2: get code
+The active day-to-day setup is:
 
- - cd ~
- - git clone https://github.com/ardupilot/arduremoteid
- - cd arduremoteid/
- - git submodule init
- - git submodule update --recursive
- - ./scripts/install_build_env.sh
- - ./scripts/regen_headers.sh
- - ./scripts/add_libraries.sh
+- Windows
+- Chrome / Chromium with WebSerial
+- ESP32-C3 connected over the existing USB Type-C port
+- local configurator served on `http://localhost:3000`
 
-## Building with make and arduino-cli
+The user-facing control path is:
 
-### Step1: Use make to install ESP32 support
+1. start the local configurator
+2. connect to the board over WebSerial
+3. configure slots and runtime behavior
+4. apply settings so they persist to board storage
+5. use `Fly` / `Pause` and the board `BOOT` button for runtime control
 
- - cd RemoteIDModule
- - make setup
+## Repository structure
 
-### Step2: Use make to build
+- `configurator/` - source for the local React/WebSerial configurator
+- `firmware/RemoteIDModule/` - ESP32 firmware
+- `firmware/libraries/` - bundled dependencies used by the firmware build
+- `docs/` - protocol notes, screenshots, and operating references
+- `scripts/` - helper scripts such as flashing
+- `site/` - static site package
 
- - cd RemoteIDModule
- - make
+## Configurator build
 
-### Step3: Use make to upload
+From the configurator workspace:
 
- - cd RemoteIDModule
- - make upload
+```powershell
+cd C:\QA_Tools\TondID\configurator
+npm install
+npm run build
+```
 
-If the board does not flash, hold-down the BOOT pushbutton on the PCB while pressing the RESET pushbutton briefly [to force it into bootloader mode] and retry.
-The ESP32-S3 is now running and emitting test/demo remote-id bluetooth
+For the active localhost development copy used in the current rig:
 
-If you get an error about missing serial support from python, install it with `python -m pip install pyserial`.
+```powershell
+cd C:\QA_Tools\MockBeaconRig\web
+npm install
+npm run build
+```
 
-### Optional
+## Local configurator dev server
 
-Plugin your ep32-s3 with ANOTHER usb cable using the port labeled
-"UART" on the pcb - this is where mavlink and debug is coming/going,
-and you can connect to this with mavproxy, etc.
+The localhost app is typically served from the active web workspace:
 
-Plugin your ep32-s3 into a flight-controller UART using pins
-RX(17)/TX(18)/GND on the pcb - this listens for mavlink from an
-autopilot, and expects to find REMOTE_ID* packets in the mavlink
-stream, and it broadcast/s this information from the drone as
-bluetooth/wifi on 2.4ghz in a manner that can be received by Android
-mobile phone App
-[https://play.google.com/store/apps/details?id=org.opendroneid.android_osm]
-and hopefully other open-drone-id compliant receivers.
+```powershell
+cd C:\QA_Tools\MockBeaconRig\web
+$env:BROWSER='none'
+$env:PORT='3000'
+npm start
+```
 
-Plugin your ep32-s3 into a flight-controller CAN port by wiring a standard CAN Tranciever (such as VP231 or similar) to pins 47(tx),38(rx),GND on the pcb.
+Then open:
 
-Setup/Configuration of ArduPilot/Mavlink/CAN to communicate together is not documented here, please go to ArduPilot wiki for more, eg: https://ardupilot.org/copter/docs/common-remoteid.html
+- `http://localhost:3000`
+
+If the page appears stale, do a hard refresh:
+
+- `Ctrl+F5`
+
+## Firmware build
+
+The current working firmware tree is:
+
+- `C:\QA_Tools\ArduRemoteID_HEAD\RemoteIDModule`
+
+Typical compile command:
+
+```powershell
+& 'C:\QA_Tools\arduino-cli\arduino-cli.exe' compile `
+  --fqbn 'esp32:esp32:esp32c3:PartitionScheme=min_spiffs,FlashMode=dio,FlashFreq=40,UploadSpeed=115200,CDCOnBoot=cdc' `
+  --build-property 'compiler.cpp.extra_flags=-DBOARD_ESP32C3_DEV -DESP32' `
+  --libraries 'C:\QA_Tools\ArduRemoteID_HEAD\libraries' `
+  --build-path 'C:\QA_Tools\ArduRemoteID_HEAD\build-c3' `
+  'C:\QA_Tools\ArduRemoteID_HEAD\RemoteIDModule'
+```
+
+Typical upload command:
+
+```powershell
+& 'C:\QA_Tools\arduino-cli\arduino-cli.exe' upload `
+  -p COM6 `
+  --fqbn 'esp32:esp32:esp32c3:PartitionScheme=min_spiffs,FlashMode=dio,FlashFreq=40,UploadSpeed=115200,CDCOnBoot=cdc' `
+  --build-path 'C:\QA_Tools\ArduRemoteID_HEAD\build-c3' `
+  'C:\QA_Tools\ArduRemoteID_HEAD\RemoteIDModule'
+```
+
+## Persistence model
+
+Profile changes written through the configurator are persisted to board storage.
+
+Persisted items include:
+
+- primary identity values
+- per-slot values
+- slot on/off state
+- movement defaults
+- tuning values
+- runtime mode state used by the current firmware
+
+This allows the board to boot with the last applied profile without needing cloud services.
+
+## Known practical notes
+
+- the project currently assumes a maximum of **5 total slots**
+- slot enablement is controlled per slot, not through a separate count field
+- `Lab Manufacturer` / `Lab Model` are local metadata for lab and detector-development workflows
+- third-party detectors may infer manufacturer/model from `UAS ID` rather than from local metadata fields
+
+## Related docs
+
+- [README.md](./README.md)
+- [docs/serial.md](./docs/serial.md)
+- [docs/DOMAINS.md](./docs/DOMAINS.md)

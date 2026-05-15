@@ -65,6 +65,13 @@ class BrowserSerialCompat {
     }
     this.port = await navigator.serial.requestPort();
     await this.port.open(this.serialOptions);
+    if (this.port.setSignals) {
+      try {
+        await this.port.setSignals({ dataTerminalReady: true, requestToSend: false });
+      } catch (e) {
+        console.log("[serial] setSignals", e);
+      }
+    }
     this.keepReading = true;
     this.readBuffer = "";
   }
@@ -465,6 +472,7 @@ function App() {
   const editStateRef = useRef({ showProfile: false, showPath: false, dataUpdated: false });
   const slotsRef = useRef(emptySlotList());
   const deviceSlotsRef = useRef(emptySlotList());
+  const serialRxSeenRef = useRef(false);
   const [debug, setDebug] = useState({
     lastLine: "",
     lastType: "",
@@ -503,11 +511,18 @@ function App() {
     }
   }
 
+  const requestDeviceState = () => {
+    serialCommand(Commands.data);
+    serialCommand(Commands.current);
+    requestSlotSync();
+  };
+
   const handleSerialConnect = () => {
     setError(false);
     if (connected) {
       serial.disconnect().then(() => {
         deviceSlotsRef.current = emptySlotList();
+        serialRxSeenRef.current = false;
         setConnected(false);
       }).catch(e => {
         console.log(e);
@@ -520,6 +535,7 @@ function App() {
           setTrail([]);
           setSlots(emptySlotList());
           deviceSlotsRef.current = emptySlotList();
+          serialRxSeenRef.current = false;
           setSlotErrors(emptySlotErrors());
         setDebug({
           lastLine: "",
@@ -967,6 +983,7 @@ function App() {
       return;
     }
     if (value.substr(0, 1) === "$") {
+      serialRxSeenRef.current = true;
       const c = value.substr(1, 1);
       const p = value.split("|");
       console.log("[serial] received", value, " / ", p);
@@ -1247,15 +1264,33 @@ function App() {
       window.squid = {};
       Object.keys(Commands).forEach(cmd => window.squid[cmd] = () => serialCommand(Commands[cmd]));
       serial.readLoop((value, done) => handleSerialValue(value)).catch(e => {
+        console.log("[serial] readLoop error", e);
         setConnected(false);
       });
-      handleSync();
+      requestDeviceState();
+      const retry1 = window.setTimeout(() => {
+        if (!serialRxSeenRef.current) {
+          console.log("[serial] no RX after initial sync, retrying");
+          requestDeviceState();
+        }
+      }, 1200);
+      const retry2 = window.setTimeout(() => {
+        if (!serialRxSeenRef.current) {
+          console.log("[serial] still no RX after retry, retrying again");
+          requestDeviceState();
+          setError("Serial link vaikib. Proovi Disconnect -> Connect, kui seis ei muutu.");
+        }
+      }, 2800);
       const timer = window.setInterval(() => {
         if (!editStateRef.current.showProfile && !editStateRef.current.showPath && !editStateRef.current.dataUpdated) {
           handleSync(false);
         }
       }, 1500);
-      return () => window.clearInterval(timer);
+      return () => {
+        window.clearInterval(timer);
+        window.clearTimeout(retry1);
+        window.clearTimeout(retry2);
+      };
     }
   }, [connected]);
 
