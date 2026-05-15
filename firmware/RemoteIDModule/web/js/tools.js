@@ -27,8 +27,15 @@ function page_fill_json_value(json) {
     for (var v in json) {
         var element = document.getElementById(v);
         if (element) {
-            element.value = json[v];
+            if (element.type == "checkbox") {
+                element.checked = json[v] == "1" || json[v] == 1 || json[v] === true;
+            } else {
+                element.value = json[v];
+            }
         }
+    }
+    if (typeof qaUpdateEnabledState == "function") {
+        qaUpdateEnabledState();
     }
 }
 
@@ -233,7 +240,7 @@ function saveMockConfig() {
 
 function qaConfigUrl() {
     var params = new URLSearchParams();
-    params.set("enable", document.getElementById("QA:ENABLE").value);
+    params.set("enable", document.getElementById("QA:ENABLE").checked ? "1" : "0");
     params.set("uas_id_seed", document.getElementById("QA:UAS_ID_SEED").value);
     params.set("home_lat", document.getElementById("QA:HOME_LAT").value);
     params.set("home_lon", document.getElementById("QA:HOME_LON").value);
@@ -245,6 +252,46 @@ function qaConfigUrl() {
     params.set("lab_label", document.getElementById("QA:LAB_LABEL").value);
     params.set("lab_mac_override", document.getElementById("QA:LAB_MAC_OVERRIDE").value);
     return "/ajax/qa/set?" + params.toString();
+}
+
+function qaRandomHexOctet() {
+    return Math.floor(Math.random() * 256).toString(16).toUpperCase().padStart(2, "0");
+}
+
+function qaRandomAlphaNum(length) {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    var out = "";
+    for (var i = 0; i < length; i++) {
+        out += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return out;
+}
+
+function qaRandomizeSerial() {
+    var input = document.getElementById("QA:UAS_ID_SEED");
+    var prefix = (input.value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    var targetLength = 16;
+    input.value = prefix.length >= targetLength ? prefix.slice(0, targetLength) : prefix + qaRandomAlphaNum(targetLength - prefix.length);
+}
+
+function qaRandomizeMac() {
+    var input = document.getElementById("QA:LAB_MAC_OVERRIDE");
+    var base = (input.value || "").trim().replace(/:+$/g, "");
+    var suffix = qaRandomHexOctet() + ":" + qaRandomHexOctet() + ":" + qaRandomHexOctet();
+    input.value = base ? base + ":" + suffix : suffix;
+}
+
+function qaUpdateEnabledState() {
+    var enabledElement = document.getElementById("QA:ENABLE");
+    var enabled = enabledElement && enabledElement.checked;
+    var cards = document.querySelectorAll(".qa-dependent");
+    for (var i = 0; i < cards.length; i++) {
+        cards[i].classList.toggle("qa-disabled", !enabled);
+        var controls = cards[i].querySelectorAll("input, select, button");
+        for (var j = 0; j < controls.length; j++) {
+            controls[j].disabled = !enabled;
+        }
+    }
 }
 
 function saveQaConfig() {

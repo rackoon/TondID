@@ -93,6 +93,7 @@ class ROMFS_Handler : public RequestHandler
             { ".js", "text/javascript" },
             { ".jpg", "image/jpeg" },
             { ".png", "image/png" },
+            { ".svg", "image/svg+xml" },
             { ".css", "text/css" },
         };
         for (const auto &e : extensions) {

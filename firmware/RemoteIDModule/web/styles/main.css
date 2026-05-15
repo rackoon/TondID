@@ -164,3 +164,89 @@ ul#testlogs li a:hover {
     font-weight: bold;
     background-color: rgba(0,255,0,0.15);
 }
+
+.qa-dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 18px 0;
+}
+
+.qa-card {
+    border: 1px solid #d0d7de;
+    border-radius: 12px;
+    padding: 16px;
+    background: #fff;
+}
+
+.qa-card h3 {
+    margin: 0 0 14px;
+    font-size: 16px;
+}
+
+.qa-card label {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.qa-card label span {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.qa-card input,
+.qa-card select,
+.qa-card button {
+    min-height: 36px;
+    border-radius: 8px;
+    border: 1px solid #c9d1d9;
+    padding: 0 10px;
+    font: inherit;
+}
+
+.qa-inline {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+}
+
+.qa-switch {
+    display: flex !important;
+    align-items: center;
+    gap: 10px !important;
+}
+
+.qa-switch input {
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+}
+
+.qa-primary {
+    width: 100%;
+    font-weight: 700;
+}
+
+.qa-status {
+    display: flex;
+    gap: 14px;
+    margin: 12px 0;
+    font-size: 13px;
+}
+
+.qa-message {
+    margin-top: 10px;
+    min-height: 18px;
+}
+
+.qa-disabled {
+    opacity: 0.45;
+    filter: grayscale(0.5);
+}
+
+@media (max-width: 900px) {
+    .qa-dashboard {
+        grid-template-columns: 1fr;
+    }
+}

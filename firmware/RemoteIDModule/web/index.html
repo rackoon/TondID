@@ -42,25 +42,79 @@
 
   <fieldset>
     <legend>QA Simulation</legend>
-    <table class="values">
-      <tr><td>QA Mode Enabled</td><td><input id="QA:ENABLE" type="number" min="0" max="1"></td></tr>
-      <tr><td>UAS ID Seed</td><td><input id="QA:UAS_ID_SEED" type="text" maxlength="20"></td></tr>
-      <tr><td>Home Latitude</td><td><input id="QA:HOME_LAT" type="number" step="0.000001"></td></tr>
-      <tr><td>Home Longitude</td><td><input id="QA:HOME_LON" type="number" step="0.000001"></td></tr>
-      <tr><td>Altitude (m)</td><td><input id="QA:ALT_M" type="number" min="-1000" max="10000" step="0.1"></td></tr>
-      <tr><td>Radius (m)</td><td><input id="QA:RADIUS" type="number" min="1" max="5000" step="1"></td></tr>
-      <tr><td>Speed (m/s)</td><td><input id="QA:SPEED" type="number" min="0.1" max="100" step="0.1"></td></tr>
-      <tr><td>Heading Mode</td><td><input id="QA:HEADING_MODE" type="number" min="0" max="2"></td></tr>
-      <tr><td>Slot Count</td><td><input id="QA:SLOT_COUNT" type="number" min="1" max="5"></td></tr>
-      <tr><td>Lab Label</td><td><input id="QA:LAB_LABEL" type="text" maxlength="20"></td></tr>
-      <tr><td>LAA MAC Override</td><td><input id="QA:LAB_MAC_OVERRIDE" type="text" maxlength="17" placeholder="02:00:00:00:00:01"></td></tr>
-      <tr><td>Active</td><td><div id="QA:ACTIVE"></div></td></tr>
-      <tr><td>Current Slot</td><td><div id="QA:SLOT"></div>/<div id="QA:SLOTS"></div></td></tr>
-    </table>
-    <p>
-      <button type="button" onclick="saveQaConfig()">Save QA</button>
-    </p>
-    <div id="QA:MESSAGE"></div>
+    <section id="qa-dashboard" class="qa-dashboard">
+      <div class="qa-card qa-global">
+        <h3>Global Control</h3>
+        <label class="qa-switch">
+          <input id="QA:ENABLE" type="checkbox" onchange="qaUpdateEnabledState()">
+          <span>QA Simulation Enabled</span>
+        </label>
+        <div class="qa-status">
+          <span>Active: <strong id="QA:ACTIVE">0</strong></span>
+          <span>Slot: <strong id="QA:SLOT">0</strong>/<strong id="QA:SLOTS">0</strong></span>
+        </div>
+        <button type="button" class="qa-primary" onclick="saveQaConfig()">Save QA</button>
+        <div id="QA:MESSAGE" class="qa-message"></div>
+      </div>
+
+      <div class="qa-card qa-dependent">
+        <h3>Simulated Identity</h3>
+        <label>
+          <span>UAS ID Seed</span>
+          <div class="qa-inline">
+            <input id="QA:UAS_ID_SEED" type="text" maxlength="20" autocomplete="off">
+            <button type="button" onclick="qaRandomizeSerial()">Randomize</button>
+          </div>
+        </label>
+        <label>
+          <span>MAC Override</span>
+          <div class="qa-inline">
+            <input id="QA:LAB_MAC_OVERRIDE" type="text" maxlength="17" autocomplete="off">
+            <button type="button" onclick="qaRandomizeMac()">Randomize</button>
+          </div>
+        </label>
+        <label>
+          <span>Lab Label</span>
+          <input id="QA:LAB_LABEL" type="text" maxlength="20" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="qa-card qa-dependent">
+        <h3>Dynamic Telemetry & Path</h3>
+        <label>
+          <span>Home Latitude</span>
+          <input id="QA:HOME_LAT" type="number" step="0.000001">
+        </label>
+        <label>
+          <span>Home Longitude</span>
+          <input id="QA:HOME_LON" type="number" step="0.000001">
+        </label>
+        <label>
+          <span>Altitude (m)</span>
+          <input id="QA:ALT_M" type="number" min="-1000" max="10000" step="0.1">
+        </label>
+        <label>
+          <span>Radius (m)</span>
+          <input id="QA:RADIUS" type="number" min="1" max="5000" step="1">
+        </label>
+        <label>
+          <span>Speed (m/s)</span>
+          <input id="QA:SPEED" type="number" min="0.1" max="100" step="0.1">
+        </label>
+        <label>
+          <span>Heading Mode</span>
+          <select id="QA:HEADING_MODE">
+            <option value="0">Path Track</option>
+            <option value="1">North Lock</option>
+            <option value="2">Home Facing</option>
+          </select>
+        </label>
+        <label>
+          <span>Slot Count</span>
+          <input id="QA:SLOT_COUNT" type="number" min="1" max="5" step="1">
+        </label>
+      </div>
+    </section>
   </fieldset>
 
   <fieldset>
@@ -205,6 +259,7 @@
     $(document).ready(function() {
         $('#progress').html(''); //disable progress text after loading the page
         setTimeout(maybeAutoHomeFromIP, 1500);
+        qaUpdateEnabledState();
     });
     </script>
 </body>

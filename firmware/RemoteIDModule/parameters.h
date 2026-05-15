@@ -69,7 +69,7 @@ public:
     uint8_t mock_slot_ua_type[MOCK_SLOT_COUNT] = {};
     uint8_t mock_slot_id_type[MOCK_SLOT_COUNT] = {};
     uint8_t qa_mode_enabled = 0;
-    char qa_uas_id_seed[21] = "QA00000000000000001";
+    char qa_uas_id_seed[21] = "";
     float qa_home_lat = 59.4370f;
     float qa_home_lon = 24.7536f;
     float qa_alt_m = 65.0f;
