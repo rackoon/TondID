@@ -22,6 +22,7 @@
 #include <WiFi.h>
 #include "parameters.h"
 #include "webinterface.h"
+#include "DynamicQATester.h"
 #include "check_firmware.h"
 #include <esp_ota_ops.h>
 #include "efuse.h"
@@ -46,6 +47,7 @@ ODID_UAS_Data UAS_data;
 String status_reason;
 static uint32_t last_location_ms;
 static WebInterface webif;
+static DynamicQATester qa_tester;
 
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
@@ -55,6 +57,9 @@ static bool pfst_check_ok = false;
 bool mock_rid_active = false;
 uint8_t mock_rid_slot = 0;
 uint8_t mock_rid_slots = 1;
+bool qa_rid_active = false;
+uint8_t qa_rid_slot = 0;
+uint8_t qa_rid_slots = 0;
 
 static constexpr double MOCK_HOME_LAT = 59.4370;
 static constexpr double MOCK_HOME_LON = 24.7536;
@@ -145,6 +150,7 @@ void setup()
 
     // set all fields to invalid/initial values
     odid_initUasData(&UAS_data);
+    qa_tester.init();
 
 #if AP_MAVLINK_ENABLED
     mavlink1.init();
@@ -698,6 +704,35 @@ static void serial_send_summary_from(const ODID_UAS_Data &data)
 
 static void serial_send_current(void)
 {
+    if (g.qa_mode_enabled != 0 && serial_fly_mode == 1) {
+        const uint8_t slots = qa_tester.active_slot_count();
+        const uint32_t now_ms = millis();
+        for (uint8_t slot = 0; slot < slots; slot++) {
+            DynamicQATester::Payload payload {};
+            if (!qa_tester.build_payload(slot, slots, now_ms, payload)) {
+                continue;
+            }
+            char mac[18] {};
+            format_mac_string(payload.mac, mac);
+            serial_printf("$T|%f|%f|%f|%d|%d|%s|%s|%s|%s|%d|%d|%d|%s|%s\r\n",
+                          payload.uas_data.Location.Latitude,
+                          payload.uas_data.Location.Longitude,
+                          payload.uas_data.Location.AltitudeGeo,
+                          int(payload.uas_data.Location.SpeedHorizontal),
+                          int(payload.uas_data.Location.Direction),
+                          mac,
+                          payload.uas_data.BasicID[0].UASID,
+                          payload.uas_data.OperatorID.OperatorId,
+                          payload.uas_data.SelfID.Desc,
+                          int(payload.uas_data.BasicID[0].UAType),
+                          int(payload.uas_data.BasicID[0].IDType),
+                          serial_fly_mode,
+                          "TondID",
+                          "QA Simulation");
+        }
+        return;
+    }
+
     const uint8_t slots = serial_mock_slots();
     if (serial_app_mode == 1 && serial_fly_mode == 1) {
         for (uint8_t enabled_slot = 0; enabled_slot < slots; enabled_slot++) {
@@ -801,6 +836,25 @@ static void serial_send_slot(uint8_t slot)
                   model,
                   unsigned(slot_ua_type(slot, g.ua_type)),
                   unsigned(slot_id_type(slot, g.id_type)));
+}
+
+static void serial_send_qa(void)
+{
+    serial_printf("$Q|%u|%s|%f|%f|%f|%f|%f|%u|%u|%s|%s|%u|%u|%u\r\n",
+                  unsigned(g.qa_mode_enabled),
+                  g.qa_uas_id_seed,
+                  g.qa_home_lat,
+                  g.qa_home_lon,
+                  g.qa_alt_m,
+                  g.qa_radius_m,
+                  g.qa_speed_mps,
+                  unsigned(g.qa_heading_mode),
+                  unsigned(g.qa_slot_count),
+                  g.qa_lab_label,
+                  g.qa_lab_mac_override,
+                  unsigned(qa_rid_active ? 1 : 0),
+                  unsigned(qa_rid_slot),
+                  unsigned(qa_rid_slots));
 }
 
 static void serial_push_status(void)
@@ -921,6 +975,38 @@ static void serial_apply_slot(const std::vector<String> &fields)
     serial_send_slot(slot);
 }
 
+static void serial_apply_qa(const std::vector<String> &fields)
+{
+    if (fields.size() < 11) {
+        serial_printf("$-\r\n");
+        return;
+    }
+
+    g.set_by_name_uint8("QA_ENABLE", uint8_t(fields[0].toInt()));
+    g.set_by_name_string("QA_UAS_SEED", fields[1].c_str());
+    g.set_by_name_string("QA_HOME_LAT", fields[2].c_str());
+    g.set_by_name_string("QA_HOME_LON", fields[3].c_str());
+    g.set_by_name_string("QA_ALT_M", fields[4].c_str());
+    g.set_by_name_string("QA_RADIUS", fields[5].c_str());
+    g.set_by_name_string("QA_SPEED", fields[6].c_str());
+    g.set_by_name_uint8("QA_HEADING", uint8_t(fields[7].toInt()));
+    g.set_by_name_uint8("QA_SLOTS", uint8_t(fields[8].toInt()));
+    g.set_by_name_string("QA_LABEL", fields[9].c_str());
+    g.set_by_name_string("QA_LAA_MAC", fields[10].c_str());
+
+    if (g.qa_mode_enabled == 0) {
+        qa_rid_active = false;
+        qa_rid_slot = 0;
+        qa_rid_slots = 0;
+    }
+
+    paused_status_valid = false;
+    serial_send_ok();
+    serial_send_qa();
+    serial_send_data();
+    serial_send_current();
+}
+
 static void serial_apply_mode(const std::vector<String> &fields)
 {
     if (fields.size() < 2) {
@@ -1006,6 +1092,10 @@ static void process_serial_command(String line)
         }
     } else if (command == "$SS") {
         serial_apply_slot(fields);
+    } else if (command == "$Q") {
+        serial_send_qa();
+    } else if (command == "$SQ") {
+        serial_apply_qa(fields);
     } else if (command == "$SM") {
         serial_apply_mode(fields);
     } else if (command == "$R") {
@@ -1208,6 +1298,7 @@ void loop()
     process_serial_compat_port(Serial, serial_line, serial_last_rx_ms);
     process_serial_compat_port(Serial1, serial1_line, serial1_last_rx_ms);
     update_button_start();
+    DynamicQATester::Payload qa_payload {};
 
 #if AP_MAVLINK_ENABLED
     if (!g.mock_enable) {
@@ -1240,9 +1331,26 @@ void loop()
     const bool stale_location = (last_location_ms == 0 || now_ms - last_location_ms > 5000);
     const bool stale_system = (last_system_ms == 0 || now_ms - last_system_ms > 5000);
     const bool parse_failed = (transport.get_parse_fail() != nullptr);
-    mock_rid_active = g.mock_enable && (stale_location || stale_system || parse_failed);
+    const bool qa_enabled = qa_tester.enabled();
+    qa_rid_active = qa_enabled && serial_fly_mode == 1 && qa_tester.get_next_payload(qa_payload, now_ms);
+    if (qa_rid_active) {
+        qa_rid_slot = qa_payload.active_slot;
+        qa_rid_slots = qa_payload.active_slots;
+        UAS_data = qa_payload.uas_data;
+        ble.set_active_mac(qa_payload.mac);
+        wifi.set_active_mac(qa_payload.mac);
+        qa_payload.wifi_mac_applied = qa_tester.apply_wifi_mac_override(qa_payload.mac);
+        mock_rid_active = false;
+        mock_rid_slot = 0;
+        mock_rid_slots = 0;
+        status_reason = qa_payload.status_text;
+    } else {
+        qa_rid_slot = 0;
+        qa_rid_slots = 0;
+    }
+    mock_rid_active = !qa_enabled && !qa_rid_active && g.mock_enable && (stale_location || stale_system || parse_failed);
 
-    if (mock_rid_active) {
+    if (!qa_rid_active && mock_rid_active) {
         mock_rid_slots = mock_slot_count();
         if (mock_rid_slots > 0) {
             const uint8_t enabled_index = (millis() / uint32_t(mock_slot_hold_ms())) % mock_rid_slots;
@@ -1258,7 +1366,7 @@ void loop()
             stop_rf_output();
             status_reason = "mock rid idle";
         }
-    } else {
+    } else if (!qa_rid_active) {
         mock_rid_slot = 0;
         mock_rid_slots = 1;
         set_data(transport);
@@ -1320,7 +1428,7 @@ void loop()
         ble.transmit_legacy(UAS_data);
     }
 
-    if (mock_rid_active && mock_rid_slots > 0) {
+    if ((qa_rid_active && qa_rid_slots > 0) || (mock_rid_active && mock_rid_slots > 0)) {
         serial_push_status();
     }
 

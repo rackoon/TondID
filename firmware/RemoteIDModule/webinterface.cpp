@@ -54,6 +54,13 @@ static void apply_mock_arg(const char *arg_name, const char *param_name)
     }
 }
 
+static void apply_qa_arg(const char *arg_name, const char *param_name)
+{
+    if (server.hasArg(arg_name)) {
+        g.set_by_name_string(param_name, server.arg(arg_name).c_str());
+    }
+}
+
 /*
   serve files from ROMFS
  */
@@ -141,6 +148,10 @@ void WebInterface::init(void)
         server.send(200, "application/json", mock_json());
     });
 
+    server.on("/ajax/qa/status.json", HTTP_GET, []() {
+        server.send(200, "application/json", qa_json());
+    });
+
     server.on("/ajax/mock/set", HTTP_GET, []() {
         apply_mock_arg("enable", "MOCK_ENABLE");
         apply_mock_arg("home_lat", "MOCK_HOME_LAT");
@@ -158,6 +169,21 @@ void WebInterface::init(void)
     server.on("/ajax/mock/randomize", HTTP_GET, []() {
         randomise_mock_profile();
         server.send(200, "application/json", mock_json());
+    });
+
+    server.on("/ajax/qa/set", HTTP_GET, []() {
+        apply_qa_arg("enable", "QA_ENABLE");
+        apply_qa_arg("uas_id_seed", "QA_UAS_SEED");
+        apply_qa_arg("home_lat", "QA_HOME_LAT");
+        apply_qa_arg("home_lon", "QA_HOME_LON");
+        apply_qa_arg("alt_m", "QA_ALT_M");
+        apply_qa_arg("radius", "QA_RADIUS");
+        apply_qa_arg("speed", "QA_SPEED");
+        apply_qa_arg("heading_mode", "QA_HEADING");
+        apply_qa_arg("slot_count", "QA_SLOTS");
+        apply_qa_arg("lab_label", "QA_LABEL");
+        apply_qa_arg("lab_mac_override", "QA_LAA_MAC");
+        server.send(200, "application/json", qa_json());
     });
 
     /*handling uploading firmware file */

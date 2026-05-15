@@ -231,6 +231,33 @@ function saveMockConfig() {
     });
 }
 
+function qaConfigUrl() {
+    var params = new URLSearchParams();
+    params.set("enable", document.getElementById("QA:ENABLE").value);
+    params.set("uas_id_seed", document.getElementById("QA:UAS_ID_SEED").value);
+    params.set("home_lat", document.getElementById("QA:HOME_LAT").value);
+    params.set("home_lon", document.getElementById("QA:HOME_LON").value);
+    params.set("alt_m", document.getElementById("QA:ALT_M").value);
+    params.set("radius", document.getElementById("QA:RADIUS").value);
+    params.set("speed", document.getElementById("QA:SPEED").value);
+    params.set("heading_mode", document.getElementById("QA:HEADING_MODE").value);
+    params.set("slot_count", document.getElementById("QA:SLOT_COUNT").value);
+    params.set("lab_label", document.getElementById("QA:LAB_LABEL").value);
+    params.set("lab_mac_override", document.getElementById("QA:LAB_MAC_OVERRIDE").value);
+    return "/ajax/qa/set?" + params.toString();
+}
+
+function saveQaConfig() {
+    ajax_get_callback(qaConfigUrl(), function(responseText) {
+        try {
+            page_fill_json_value(JSON.parse(responseText));
+            set_message_color("QA:MESSAGE", "green", "Saved");
+        } catch (e) {
+            set_message_color("QA:MESSAGE", "red", "Save failed");
+        }
+    });
+}
+
 function randomizeMockConfig() {
     ajax_get_callback("/ajax/mock/randomize", function(responseText) {
         try {

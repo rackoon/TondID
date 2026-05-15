@@ -68,6 +68,17 @@ public:
     char mock_slot_model[MOCK_SLOT_COUNT][21] = {};
     uint8_t mock_slot_ua_type[MOCK_SLOT_COUNT] = {};
     uint8_t mock_slot_id_type[MOCK_SLOT_COUNT] = {};
+    uint8_t qa_mode_enabled = 0;
+    char qa_uas_id_seed[21] = "QA00000000000000001";
+    float qa_home_lat = 59.4370f;
+    float qa_home_lon = 24.7536f;
+    float qa_alt_m = 65.0f;
+    float qa_radius_m = 120.0f;
+    float qa_speed_mps = 6.0f;
+    uint8_t qa_heading_mode = 0;
+    uint8_t qa_slot_count = 1;
+    char qa_lab_label[21] = "QA LAB";
+    char qa_lab_mac_override[21] = "";
     struct {
         char b64_key[64];
     } public_keys[MAX_PUBLIC_KEYS];

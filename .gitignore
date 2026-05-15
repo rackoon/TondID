@@ -4,6 +4,8 @@ configurator/dev-server.err.log
 configurator/dev-server.out.log
 firmware/RemoteIDModule/build/
 firmware/build-c3/
+build-qa/
+dist/
 *.elf
 *.bin
 *.map

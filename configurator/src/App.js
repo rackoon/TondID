@@ -162,6 +162,8 @@ const Commands = {
   store_data: "SD",
   get_slot_data: "GS",
   store_slot_data: "SS",
+  qa_data: "Q",
+  store_qa: "SQ",
   store_mode: "SM",
   path: "P",
 }
@@ -206,6 +208,12 @@ const InitialPosition = { lat: 59.437, lng: 24.7536, op_lat: 59.437, op_lng: 24.
 const MaxTotalUas = 5;
 const InitialPest = { pe_lat: 59.437, pe_lng: 24.7536, pe_radius: MinRadius, pe_spawn: 1, ghost_id_scheme: 0, ghost_id_prefix: "1596GHOSTPREFIX000", ghost_flight_mode: 2, ghost_altitude_mode: 1 };
 const InitialSlot = { enabled: false, mac: "", rid: "", operator: "", description: "", manufacturer: "", model: "", uatype: 2, idtype: 1 };
+const InitialQa = { enabled: false, uas_id_seed: "QA00000000000000001", home_lat: 59.437, home_lon: 24.7536, alt_m: 65, radius_m: 120, speed_mps: 6, heading_mode: 0, slot_count: 1, lab_label: "QA LAB", lab_mac_override: "" };
+const qa_heading_mode_t = {
+  "PATH_TRACK": 0,
+  "NORTH_LOCK": 1,
+  "HOME_FACING": 2,
+};
 const SlotSharedFields = ["operator", "manufacturer", "model", "uatype", "idtype"];
 const InitialSharedLocks = { operator: true, manufacturer: true, model: true, uatype: true, idtype: true };
 const SlotFieldLabels = {
@@ -449,6 +457,7 @@ function App() {
   const [pest, setPest] = useState({});
   const [data, setData] = useState(InitialPest);
   const [slots, setSlots] = useState(emptySlotList());
+  const [qa, setQa] = useState(InitialQa);
   const [slotErrors, setSlotErrors] = useState(emptySlotErrors());
   const [slotClipboard, setSlotClipboard] = useState(null);
   const [sharedLocks, setSharedLocks] = useState(InitialSharedLocks);
@@ -471,6 +480,7 @@ function App() {
   const serialQueueRef = useRef(Promise.resolve());
   const editStateRef = useRef({ showProfile: false, showPath: false, dataUpdated: false });
   const slotsRef = useRef(emptySlotList());
+  const qaRef = useRef(InitialQa);
   const deviceSlotsRef = useRef(emptySlotList());
   const serialRxSeenRef = useRef(false);
   const [debug, setDebug] = useState({
@@ -507,6 +517,7 @@ function App() {
     } else {
       serialCommand(Commands.data);
       serialCommand(Commands.current);
+      serialCommand(Commands.qa_data);
       requestSlotSync();
     }
   }
@@ -514,6 +525,7 @@ function App() {
   const requestDeviceState = () => {
     serialCommand(Commands.data);
     serialCommand(Commands.current);
+    serialCommand(Commands.qa_data);
     requestSlotSync();
   };
 
@@ -643,6 +655,19 @@ function App() {
       }
       return updated;
     });
+  };
+
+  const handleQaData = name => event => {
+    const value = event.target.value;
+    setDataUpdated(true);
+    setError(false);
+    setQa(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleQaEnabled = () => {
+    setDataUpdated(true);
+    setError(false);
+    setQa(prev => ({ ...prev, enabled: !prev.enabled }));
   };
 
   const handleSlotEnabled = slotIndex => () => {
@@ -891,6 +916,33 @@ function App() {
     for (const [idx, slot] of slotPayload.entries()) {
       await writeSlotToDevice(slot, idx);
     }
+    const qaPayload = {
+      ...qaRef.current,
+      uas_id_seed: qaRef.current.uas_id_seed || slotPayload[0]?.rid || dt.rid || InitialQa.uas_id_seed,
+      home_lat: qaRef.current.home_lat || dt.lat,
+      home_lon: qaRef.current.home_lon || dt.lng,
+      alt_m: qaRef.current.alt_m || dt.alt || InitialQa.alt_m,
+      radius_m: qaRef.current.radius_m || dt.pe_radius || InitialQa.radius_m,
+      speed_mps: qaRef.current.speed_mps || dt.spd || InitialQa.speed_mps,
+      slot_count: totalEnabled || 1,
+      lab_label: qaRef.current.lab_label || dt.description || InitialQa.lab_label,
+      lab_mac_override: normalizeMac(qaRef.current.lab_mac_override || slotPayload[0]?.mac || dt.mac || ""),
+    };
+    await serialCommand(Commands.store_qa, [
+      qaPayload.enabled ? 1 : 0,
+      S(qaPayload.uas_id_seed).slice(0, 20),
+      qaPayload.home_lat,
+      qaPayload.home_lon,
+      qaPayload.alt_m,
+      qaPayload.radius_m,
+      qaPayload.speed_mps,
+      qaPayload.heading_mode || 0,
+      Math.min(MaxTotalUas, Math.max(1, I(qaPayload.slot_count))),
+      S(qaPayload.lab_label).slice(0, 20),
+      normalizeMac(qaPayload.lab_mac_override || ""),
+    ]);
+    setQa(qaPayload);
+    qaRef.current = qaPayload;
     slotsRef.current = slotPayload;
     setSlots(slotPayload);
     deviceSlotsRef.current = emptySlotList();
@@ -1086,6 +1138,26 @@ function App() {
           setSlotErrors(prev => prev.map((entry, idx) => idx === slotIndex ? [] : entry));
         }
       }
+      if (c === "Q") {
+        const nextQa = {
+          enabled: I(p[1]) === 1,
+          uas_id_seed: p[2] || InitialQa.uas_id_seed,
+          home_lat: F(p[3]),
+          home_lon: F(p[4]),
+          alt_m: p[5] || InitialQa.alt_m,
+          radius_m: p[6] || InitialQa.radius_m,
+          speed_mps: p[7] || InitialQa.speed_mps,
+          heading_mode: I(p[8]),
+          slot_count: Math.min(MaxTotalUas, Math.max(1, I(p[9]))),
+          lab_label: p[10] || InitialQa.lab_label,
+          lab_mac_override: normalizeMac(p[11] || ""),
+          active: I(p[12]) === 1,
+          active_slot: I(p[13]),
+          active_slots: I(p[14]),
+        };
+        qaRef.current = nextQa;
+        setQa(nextQa);
+      }
       if (c === "D") {
         if (editStateRef.current.showProfile && editStateRef.current.dataUpdated) {
           const deviceAppMode = I(p[16]);
@@ -1187,6 +1259,10 @@ function App() {
   useEffect(() => {
     slotsRef.current = slots;
   }, [slots]);
+
+  useEffect(() => {
+    qaRef.current = qa;
+  }, [qa]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1390,6 +1466,39 @@ function App() {
                     <input type="input" value={data[ref[1]] || ""} size="24" maxLength="24" onChange={handleData(ref[1])} />
                   </div>
                 )}
+              </div>
+
+              <div className="setting section-span-full">
+                <h3>QA Simulation</h3>
+                <div className="controls wrap">
+                  <Button selected={qa.enabled} name={qa.enabled ? "QA ON" : "QA OFF"} className={qa.enabled ? "status-on" : "status-off"} onPress={handleQaEnabled} />
+                </div>
+                <div className="field-note">Safe lab mode: synthetic ODID data, no raw packet injection. Slot count follows enabled Swarm Slots on Apply.</div>
+                <div className="settings-grid compact-grid">
+                  <div>
+                    <div className="form">
+                      <label className="w">UAS ID Seed</label>
+                      <input type="input" value={qa.uas_id_seed || ""} size="24" maxLength="20" onChange={handleQaData("uas_id_seed")} />
+                    </div>
+                    <div className="form">
+                      <label className="w">Lab Label</label>
+                      <input type="input" value={qa.lab_label || ""} size="24" maxLength="20" onChange={handleQaData("lab_label")} />
+                    </div>
+                    <div className="form">
+                      <label className="w">LAA MAC Override</label>
+                      <input type="input" value={qa.lab_mac_override || ""} size="24" maxLength="17" onChange={handleQaData("lab_mac_override")} />
+                    </div>
+                  </div>
+                  <div>
+                    {[["Home Lat", "home_lat"], ["Home Lng", "home_lon"], ["Alt m", "alt_m"], ["Radius m", "radius_m"], ["Speed m/s", "speed_mps"]].map(ref =>
+                      <div className="form" key={ref[1]}>
+                        <label className="w">{ref[0]}</label>
+                        <input type="input" value={qa[ref[1]] || ""} size="24" maxLength="24" onChange={handleQaData(ref[1])} />
+                      </div>
+                    )}
+                    <Dropdown items={qa_heading_mode_t} selected={qa.heading_mode || 0} label="Heading Mode" onChange={handleQaData("heading_mode")} />
+                  </div>
+                </div>
               </div>
 
               <div className="setting section-span-full">

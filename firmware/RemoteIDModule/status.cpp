@@ -14,6 +14,9 @@ extern String status_reason;
 extern bool mock_rid_active;
 extern uint8_t mock_rid_slot;
 extern uint8_t mock_rid_slots;
+extern bool qa_rid_active;
+extern uint8_t qa_rid_slot;
+extern uint8_t qa_rid_slots;
 
 typedef struct {
     String name;
@@ -302,6 +305,27 @@ String mock_json(void)
         { "MOCK:ACTIVE", mock_rid_active ? "1" : "0" },
         { "MOCK:SLOT", String(unsigned(mock_rid_slot + 1)) },
         { "MOCK:SLOTS", String(unsigned(mock_rid_slots)) },
+    };
+    return json_format(table, ARRAY_SIZE(table));
+}
+
+String qa_json(void)
+{
+    const json_table_t table[] = {
+        { "QA:ENABLE", String(g.qa_mode_enabled) },
+        { "QA:UAS_ID_SEED", String(g.qa_uas_id_seed) },
+        { "QA:HOME_LAT", String(g.qa_home_lat, 6) },
+        { "QA:HOME_LON", String(g.qa_home_lon, 6) },
+        { "QA:ALT_M", String(g.qa_alt_m, 1) },
+        { "QA:RADIUS", String(g.qa_radius_m, 1) },
+        { "QA:SPEED", String(g.qa_speed_mps, 1) },
+        { "QA:HEADING_MODE", String(g.qa_heading_mode) },
+        { "QA:SLOT_COUNT", String(g.qa_slot_count) },
+        { "QA:LAB_LABEL", String(g.qa_lab_label) },
+        { "QA:LAB_MAC_OVERRIDE", String(g.qa_lab_mac_override) },
+        { "QA:ACTIVE", qa_rid_active ? "1" : "0" },
+        { "QA:SLOT", qa_rid_active ? String(unsigned(qa_rid_slot + 1)) : "0" },
+        { "QA:SLOTS", qa_rid_active ? String(unsigned(qa_rid_slots)) : "0" },
     };
     return json_format(table, ARRAY_SIZE(table));
 }
