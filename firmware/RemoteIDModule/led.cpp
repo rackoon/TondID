@@ -10,12 +10,30 @@ void Led::init(void)
         return;
     }
     done_init = true;
+    feedback_until_ms = 0;
 #ifdef PIN_STATUS_LED
     pinMode(PIN_STATUS_LED, OUTPUT);
+    digitalWrite(PIN_STATUS_LED, STATUS_LED_OK);
 #endif
 #ifdef WS2812_LED_PIN
     pinMode(WS2812_LED_PIN, OUTPUT);
     ledStrip.begin();
+#endif
+}
+
+void Led::pulse_feedback(uint16_t duration_ms)
+{
+    init();
+    const uint32_t now_ms = millis();
+    feedback_until_ms = now_ms + duration_ms;
+#ifdef PIN_STATUS_LED
+    digitalWrite(PIN_STATUS_LED, !STATUS_LED_OK);
+#endif
+#ifdef WS2812_LED_PIN
+    ledStrip.clear();
+    ledStrip.setPixelColor(0, ledStrip.Color(255, 0, 0));
+    ledStrip.setPixelColor(1, ledStrip.Color(255, 0, 0));
+    ledStrip.show();
 #endif
 }
 
@@ -24,6 +42,11 @@ void Led::update(void)
     init();
 
     const uint32_t now_ms = millis();
+
+    if (feedback_until_ms != 0 && int32_t(feedback_until_ms - now_ms) > 0) {
+        return;
+    }
+    feedback_until_ms = 0;
 
 #ifdef PIN_STATUS_LED
     switch (state) {

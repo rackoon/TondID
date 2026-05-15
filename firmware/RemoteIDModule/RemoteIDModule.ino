@@ -1049,6 +1049,7 @@ static void update_button_start(void)
     if (raw != stable_state && now_ms - last_change_ms > 35) {
         stable_state = raw;
         if (!stable_state) {
+            led.pulse_feedback();
             serial_fly_mode = serial_fly_mode ? 0 : 1;
             g.set_by_name_uint8("MOCK_FLY_MODE", serial_fly_mode);
             g.set_by_name_uint8("MOCK_ENABLE", 1);

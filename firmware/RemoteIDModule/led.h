@@ -19,12 +19,14 @@ public:
     void set_state(LedState _state) {
         state = _state;
     }
+    void pulse_feedback(uint16_t duration_ms = 180);
     void update(void);
 
 private:
     void init(void);
     bool done_init;
     uint32_t last_led_trig_ms;
+    uint32_t feedback_until_ms;
     LedState state;
 
 #ifdef WS2812_LED_PIN

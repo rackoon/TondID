@@ -24,7 +24,7 @@
 #define PIN_USER_BUTTON GPIO_NUM_9
 
 #define PIN_STATUS_LED GPIO_NUM_8
-#define STATUS_LED_OK 1
+#define STATUS_LED_OK 0
 
 #elif defined(BOARD_BLUEMARK_DB200)
 #define BOARD_ID 3
